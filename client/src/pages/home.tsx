@@ -10,13 +10,13 @@ import type { AnalysisResult } from "@shared/schema";
 
 const EXAMPLE_PROMPTS = [
   {
-    text: "¿Procede el amparo contra una resolución de un tribunal administrativo que no agota la vía ordinaria?",
+    text: "Pruebas documentales en amparo indirecto: ¿cuándo deben ofrecerse y cómo se desahogan?",
   },
   {
-    text: "Requisitos para la procedencia del despido injustificado en contratos por tiempo indeterminado",
+    text: "Trabajador que renuncia a sus derechos laborales. ¿Es válida la renuncia aunque se haga ante autoridad?",
   },
   {
-    text: "Impugnación de laudos arbitrales por violación al debido proceso",
+    text: "Tercero perjudicado no emplazado en juicio de amparo. ¿Procede la queja?",
   },
 ];
 
