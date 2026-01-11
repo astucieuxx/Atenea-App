@@ -332,10 +332,9 @@ export default function TesisDetail() {
       </div>
 
       <ArgumentModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        tesisId={tesis.id}
-        tesisTitle={tesis.title}
+        tesis={tesis}
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
       />
     </div>
   );

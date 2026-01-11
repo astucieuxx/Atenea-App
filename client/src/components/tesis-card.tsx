@@ -1,8 +1,8 @@
-import { Link } from "wouter";
-import { ChevronRight, Building2, BookOpen, Gavel } from "lucide-react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { useState } from "react";
+import { ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { FuerzaBadge } from "./fuerza-badge";
+import { TesisDetailModal } from "./tesis-detail-modal";
 import type { ScoredTesis } from "@shared/schema";
 
 interface TesisCardProps {
@@ -11,66 +11,60 @@ interface TesisCardProps {
   rank?: number;
 }
 
-export function TesisCard({ tesis, caseId, rank }: TesisCardProps) {
-  const linkPath = caseId 
-    ? `/analisis/${caseId}/tesis/${tesis.id}` 
-    : `/tesis/${tesis.id}`;
+export function TesisCard({ tesis, caseId }: TesisCardProps) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
-    <Link href={linkPath}>
-      <Card 
-        className="group cursor-pointer border-card-border hover-elevate active-elevate-2 transition-colors"
+    <>
+      <button
+        type="button"
+        onClick={() => setIsModalOpen(true)}
+        className="w-full text-left p-5 rounded-lg border border-border bg-card hover-elevate active-elevate-2 transition-colors"
         data-testid={`card-tesis-${tesis.id}`}
       >
-        <CardHeader className="flex flex-row items-start justify-between gap-4 pb-3">
-          <div className="flex-1 min-w-0">
-            {rank && (
-              <span className="text-xs font-medium text-muted-foreground mb-1 block">
-                #{rank} Resultado
-              </span>
-            )}
-            <h3 className="font-serif text-base font-medium leading-snug text-foreground line-clamp-2">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0 space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="secondary" className="text-xs font-medium">
+                {tesis.tipo}
+              </Badge>
+              <FuerzaBadge fuerza={tesis.fuerza} />
+            </div>
+            
+            <h3 className="font-semibold text-sm leading-snug text-foreground uppercase">
               {tesis.title}
             </h3>
-          </div>
-          <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0 transition-transform group-hover:translate-x-0.5" />
-        </CardHeader>
-        <CardContent className="pt-0 space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="text-xs font-normal gap-1.5">
-              <Gavel className="h-3 w-3" />
-              {tesis.tipo}
-            </Badge>
-            <Badge variant="outline" className="text-xs font-normal gap-1.5">
-              <Building2 className="h-3 w-3" />
-              {tesis.instancia}
-            </Badge>
-            <Badge variant="outline" className="text-xs font-normal gap-1.5">
-              <BookOpen className="h-3 w-3" />
-              {tesis.materias || "General"}
-            </Badge>
-            <FuerzaBadge fuerza={tesis.fuerza} />
-          </div>
-
-          <div className="space-y-2">
+            
+            <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+              <span>{tesis.instancia || tesis.organo_jurisdiccional}</span>
+              {tesis.epoca && (
+                <>
+                  <span className="mx-1">•</span>
+                  <span>{tesis.epoca}</span>
+                </>
+              )}
+              {tesis.id && (
+                <>
+                  <span className="mx-1">•</span>
+                  <span>Registro: {tesis.id}</span>
+                </>
+              )}
+            </div>
+            
             <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
-              {tesis.abstract || tesis.body?.slice(0, 200)}
+              {tesis.abstract || tesis.body?.slice(0, 250)}...
             </p>
           </div>
+          <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0 mt-1" />
+        </div>
+      </button>
 
-          <div className="pt-2 border-t border-border">
-            <p className="text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">Por qué aplica:</span>{" "}
-              {tesis.por_que_aplica}
-            </p>
-          </div>
-
-          <div className="text-xs text-muted-foreground">
-            <span className="font-medium">{tesis.organo_jurisdiccional}</span>
-            {tesis.epoca && <span className="before:content-['·'] before:mx-2">{tesis.epoca}</span>}
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
+      <TesisDetailModal
+        tesis={tesis}
+        caseId={caseId}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
+    </>
   );
 }

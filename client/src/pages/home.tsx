@@ -1,26 +1,22 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Scale, ArrowRight, Loader2, Sparkles } from "lucide-react";
+import { Scale, ArrowRight, Loader2, FileText, Building2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { AnalysisResult } from "@shared/schema";
 
 const EXAMPLE_PROMPTS = [
   {
-    text: "Trabajador despedido injustificadamente reclama salarios caídos y el patrón no pagó las cuotas del Seguro Social",
-    description: "Laboral - Salarios caídos y Seguro Social",
+    text: "¿Procede el amparo contra una resolución de un tribunal administrativo que no agota la vía ordinaria?",
   },
   {
-    text: "Recurso de queja contra auto que niega suspensión en juicio de amparo indirecto",
-    description: "Amparo - Recursos y suspensión",
+    text: "Requisitos para la procedencia del despido injustificado en contratos por tiempo indeterminado",
   },
   {
-    text: "Pruebas documentales ofrecidas en segunda instancia en materia mercantil",
-    description: "Mercantil - Procedimiento probatorio",
+    text: "Impugnación de laudos arbitrales por violación al debido proceso",
   },
 ];
 
@@ -66,94 +62,82 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center px-4 py-12">
-      <div className="w-full max-w-2xl space-y-10">
-        <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
-            <Scale className="w-8 h-8 text-primary" />
+    <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center px-4 py-16">
+      <div className="w-full max-w-xl space-y-8">
+        <div className="text-center space-y-3">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-primary text-primary-foreground mb-2">
+            <Scale className="w-7 h-7" />
           </div>
-          <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-foreground" data-testid="text-titulo-principal">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground" data-testid="text-titulo-principal">
             Atenea
           </h1>
-          <p className="text-lg text-muted-foreground max-w-md mx-auto leading-relaxed">
-            Tu copiloto de jurisprudencia mexicana. Analiza casos, identifica tesis relevantes y genera argumentos legales.
+          <p className="text-muted-foreground">
+            Copiloto de Jurisprudencia en México
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <label htmlFor="caso" className="block text-sm font-medium text-foreground">
-              Describe el caso o problema jurídico
-            </label>
-            <Textarea
-              id="caso"
-              value={descripcion}
-              onChange={(e) => setDescripcion(e.target.value)}
-              placeholder="Ej: Un trabajador fue despedido sin justificación y reclama el pago de salarios caídos. El patrón no pagó las cuotas correspondientes al Seguro Social durante el tiempo de la relación laboral..."
-              className="min-h-[160px] resize-none text-base leading-relaxed font-sans"
-              data-testid="textarea-caso"
-            />
-            <p className="text-xs text-muted-foreground">
-              Sea lo más específico posible sobre los hechos y el problema legal que enfrenta.
-            </p>
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Textarea
+            value={descripcion}
+            onChange={(e) => setDescripcion(e.target.value)}
+            placeholder="Describe el caso o problema jurídico que necesitas analizar..."
+            className="min-h-[120px] resize-none text-base bg-card border-border"
+            data-testid="textarea-caso"
+          />
 
           <Button
             type="submit"
             size="lg"
-            className="w-full gap-2 text-base"
+            className="w-full gap-2"
             disabled={mutation.isPending || descripcion.trim().length < 10}
             data-testid="button-analizar"
           >
             {mutation.isPending ? (
               <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                Analizando caso...
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Analizando...
               </>
             ) : (
               <>
-                <Sparkles className="h-5 w-5" />
                 Analizar caso
-                <ArrowRight className="h-5 w-5" />
+                <ArrowRight className="h-4 w-4" />
               </>
             )}
           </Button>
         </form>
 
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground text-center">
-            O prueba con un ejemplo:
+        <div className="space-y-4 pt-4">
+          <p className="text-xs text-muted-foreground text-center uppercase tracking-wider font-medium">
+            Ejemplos de consulta
           </p>
-          <div className="grid gap-3">
+          <div className="space-y-2">
             {EXAMPLE_PROMPTS.map((prompt, index) => (
-              <Card
+              <button
                 key={index}
-                className="p-4 cursor-pointer border-card-border hover-elevate active-elevate-2 transition-colors"
+                type="button"
                 onClick={() => handleExampleClick(prompt.text)}
+                className="w-full text-left p-4 rounded-lg border border-border bg-card hover-elevate active-elevate-2 transition-colors flex items-start gap-3"
                 data-testid={`card-ejemplo-${index}`}
               >
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">
-                      {prompt.text}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {prompt.description}
-                    </p>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                </div>
-              </Card>
+                <FileText className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                <span className="text-sm text-foreground leading-relaxed">
+                  {prompt.text}
+                </span>
+              </button>
             ))}
           </div>
         </div>
 
-        <div className="text-center pt-8 border-t border-border">
-          <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
-            Atenea utiliza razonamiento basado en reglas sobre jurisprudencia oficial mexicana. 
-            Los resultados son orientativos y deben ser verificados por un profesional del derecho.
-          </p>
-        </div>
+        <footer className="flex items-center justify-center gap-6 pt-8 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <Building2 className="h-4 w-4" />
+            <span>Jurisprudencia oficial del SCJN</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4" />
+            <span>Análisis fundamentado</span>
+          </div>
+        </footer>
       </div>
     </div>
   );
