@@ -211,7 +211,13 @@ function calculatePertinenceScore(
   const tesisMaterias = normalizeText(tesis.materias);
   
   // Match de materia principal (peso alto: 0-35 puntos)
-  if (tesisMaterias.includes(caseClassification.materia)) {
+  // "Común" es compatible con amparo ya que muchas tesis de amparo tienen materia "Común"
+  const materiaCompatible = 
+    tesisMaterias.includes(caseClassification.materia) ||
+    (caseClassification.materia === "amparo" && tesisMaterias.includes("comun")) ||
+    (caseClassification.materia === "amparo" && tesisMaterias.includes("común"));
+  
+  if (materiaCompatible) {
     score += 35;
   } else if (tesisMaterias.includes(caseClassification.materia.slice(0, 4))) {
     score += 15;
@@ -476,16 +482,18 @@ function getPertinenceLevel(score: number): PertinenciaLevel {
 }
 
 function getAuthorityLevel(score: number): AutoridadLevel {
-  if (score >= 70) return "Alta";
-  if (score >= 45) return "Media";
+  // Ajustado para reflejar distribución real del dataset (TCC Séptima Época)
+  if (score >= 58) return "Alta";
+  if (score >= 40) return "Media";
   return "Baja";
 }
 
 function getFuerzaLevel(pertinence: number, authority: number): FuerzaLevel {
   // Combina pertinencia y autoridad para fuerza general
+  // Ajustado: umbral 55 permite que jurisprudencia de TCC con buena pertinencia sea "Alta"
   const combined = (pertinence * 0.4) + (authority * 0.6);
-  if (combined >= 65) return "Alta";
-  if (combined >= 40) return "Media";
+  if (combined >= 55) return "Alta";
+  if (combined >= 35) return "Media";
   return "Baja";
 }
 

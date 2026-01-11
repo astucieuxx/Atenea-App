@@ -10,13 +10,13 @@ import type { AnalysisResult } from "@shared/schema";
 
 const EXAMPLE_PROMPTS = [
   {
-    text: "Pruebas documentales en amparo indirecto: ¿cuándo deben ofrecerse y cómo se desahogan?",
+    text: "Tercero perjudicado no emplazado en juicio de amparo. ¿Procede la queja o el amparo?",
   },
   {
-    text: "Trabajador que renuncia a sus derechos laborales. ¿Es válida la renuncia aunque se haga ante autoridad?",
+    text: "Suplencia de la queja deficiente en materia agraria. ¿Cuál es su alcance en el amparo?",
   },
   {
-    text: "Tercero perjudicado no emplazado en juicio de amparo. ¿Procede la queja?",
+    text: "Suspensión del procedimiento en juicio de amparo. ¿Cuándo procede y quién puede solicitarla?",
   },
 ];
 
