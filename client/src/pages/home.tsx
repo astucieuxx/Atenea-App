@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Scale, ArrowRight, Loader2, FileText, Building2, Sparkles } from "lucide-react";
+import { ArrowRight, Loader2, FileText, Building2, Sparkles } from "lucide-react";
+import ateneaLogo from "@/assets/atenea-logo.png";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
@@ -65,14 +66,16 @@ export default function Home() {
     <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center px-4 py-16">
       <div className="w-full max-w-xl space-y-8">
         <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-primary text-primary-foreground mb-2">
-            <Scale className="w-7 h-7" />
+          <div className="flex justify-center mb-2">
+            <img 
+              src={ateneaLogo} 
+              alt="Atenea" 
+              className="h-32 w-auto object-contain"
+              data-testid="img-logo"
+            />
           </div>
           <div className="space-y-2">
-            <h1 className="text-3xl font-bold tracking-tight text-foreground" data-testid="text-titulo-principal">
-              Atenea
-            </h1>
-            <p className="text-primary font-medium">
+            <p className="text-primary font-medium text-lg">
               El copiloto jurídico del litigante moderno
             </p>
           </div>

@@ -1,7 +1,8 @@
 import { Link, useLocation } from "wouter";
-import { Scale, Moon, Sun } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "./theme-provider";
+import ateneaLogo from "@/assets/atenea-logo.png";
 
 export function Header() {
   const [location] = useLocation();
@@ -10,18 +11,13 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full bg-primary text-primary-foreground">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-foreground/10">
-            <Scale className="h-4 w-4" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-base font-semibold tracking-tight" data-testid="text-logo">
-              Atenea
-            </span>
-            <span className="text-[10px] text-primary-foreground/70 uppercase tracking-wider hidden sm:block">
-              Copiloto Jurídico
-            </span>
-          </div>
+        <Link href="/" className="flex items-center gap-2">
+          <img 
+            src={ateneaLogo} 
+            alt="Atenea" 
+            className="h-9 w-auto object-contain brightness-0 invert"
+            data-testid="img-logo-header"
+          />
         </Link>
 
         <nav className="flex items-center gap-1">
