@@ -323,7 +323,11 @@ function calculateAuthorityScore(tesis: Tesis): number {
 // Identificar debilidades legales para advertir al usuario
 // ===========================================================================
 
-function detectRiskFlags(tesis: Tesis, authorityScore: number): RiskFlag[] {
+function detectRiskFlags(
+  tesis: Tesis, 
+  authorityScore: number,
+  materiaParcial: boolean = false
+): RiskFlag[] {
   const flags: RiskFlag[] = [];
   const tipo = tesis.tipo.toLowerCase();
   const epoca = normalizeText(tesis.epoca);
@@ -352,6 +356,11 @@ function detectRiskFlags(tesis: Tesis, authorityScore: number): RiskFlag[] {
     if (!instancia.includes("sala")) {
       flags.push("autoridad_limitada");
     }
+  }
+  
+  // Materia parcial - solo coincidencia parcial en la materia
+  if (materiaParcial) {
+    flags.push("materia_parcial");
   }
   
   return flags;
@@ -578,7 +587,13 @@ export function scoreTesis(
     tesisList.map((tesis) => {
       let pertinence_score = calculatePertinenceScore(tesis, caseClassification, descripcion);
       const authority_score = calculateAuthorityScore(tesis);
-      const risk_flags = detectRiskFlags(tesis, authority_score);
+      
+      // Detectar si hay match parcial de materia
+      const tesisMaterias = normalizeText(tesis.materias);
+      const materiaParcial = !tesisMaterias.includes(caseClassification.materia) && 
+                             tesisMaterias.includes(caseClassification.materia.slice(0, 4));
+      
+      const risk_flags = detectRiskFlags(tesis, authority_score, materiaParcial);
       
       // Aplicar ajuste por rol
       pertinence_score = applyRoleAdjustment(pertinence_score, tesis, rol_procesal);

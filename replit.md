@@ -7,62 +7,100 @@ Atenea is a Mexican LegalTech MVP that helps lawyers analyze legal cases, identi
 - **Frontend**: React + Tailwind CSS + shadcn/ui components
 - **Backend**: Node.js + Express
 - **Data**: CSV-loaded Mexican jurisprudence (7000+ tesis)
-- **Reasoning**: Rule-based legal scoring algorithm (no LLM calls)
+- **Reasoning**: Three-dimensional rule-based scoring algorithm (no LLM calls)
 
 ## Project Structure
 ```
 client/
 ├── src/
 │   ├── components/
-│   │   ├── ui/              # shadcn components
+│   │   ├── ui/                    # shadcn components
 │   │   ├── theme-provider.tsx
 │   │   ├── header.tsx
 │   │   ├── fuerza-badge.tsx
 │   │   ├── tesis-card.tsx
+│   │   ├── tesis-detail-modal.tsx # Three-tab modal with insights
 │   │   ├── argument-modal.tsx
 │   │   └── loading-skeleton.tsx
 │   ├── pages/
-│   │   ├── home.tsx         # Case input screen
-│   │   ├── analysis.tsx     # Analysis results
-│   │   ├── tesis-detail.tsx # Tesis detail view
-│   │   ├── history.tsx      # Case history
+│   │   ├── home.tsx               # Case input screen
+│   │   ├── analysis.tsx           # Analysis results
+│   │   ├── history.tsx            # Case history
 │   │   └── not-found.tsx
 │   ├── hooks/
 │   ├── lib/
 │   └── App.tsx
 server/
-├── csv-loader.ts            # Parses CSV jurisprudence data
-├── legal-reasoning.ts       # Scoring and argument generation
-├── storage.ts               # In-memory storage
-├── routes.ts                # API endpoints
+├── csv-loader.ts                  # Parses CSV jurisprudence data
+├── legal-reasoning.ts             # Three-dimensional scoring engine
+├── storage.ts                     # In-memory storage
+├── routes.ts                      # API endpoints
 └── index.ts
 shared/
-└── schema.ts                # TypeScript types and Zod schemas
+└── schema.ts                      # TypeScript types and Zod schemas
 ```
 
 ## Key Features
-1. **Case Analysis**: User describes a legal problem, system identifies the legal issue
-2. **Jurisprudence Search**: Scores and ranks relevant tesis from CSV data
-3. **Strength Labels**: Fuerza Alta/Media/Baja based on type, instancia, epoca
-4. **Detail View**: Tabbed view with executive summary, official text, usage guidance
-5. **Argument Generation**: Creates conservative legal paragraphs with proper citations
-6. **Case History**: Stores analyzed cases for future reference
+1. **Case Classification**: Formal identification of materia, vía procesal, and problema jurídico
+2. **Three-Dimensional Scoring**: Pertinence, Authority, and Risk dimensions
+3. **Two-Stage Ranking**: Filter by pertinence (top 15) → Rank by authority (top 5)
+4. **Risk Flags**: Surface legal weaknesses (tesis_aislada, epoca_antigua, etc.)
+5. **Structured Insights**: what_it_says, when_it_applies, main_risk, recommendation
+6. **Role-Aware Adjustments**: Light contextual scoring for Actor/Demandado/Quejoso
+7. **Argument Generation**: Conservative legal paragraphs with proper citations
 
 ## API Endpoints
-- `POST /api/analyze` - Analyze a legal case description
+- `POST /api/analyze` - Analyze a legal case (accepts descripcion and optional rol_procesal)
 - `GET /api/analysis/:id` - Get analysis by ID
 - `GET /api/tesis/:id` - Get tesis details
 - `POST /api/arguments` - Generate legal argument
 - `GET /api/history` - Get case history
 - `GET /api/tesis` - Search all tesis
 
-## Legal Reasoning Algorithm
-The scoring system considers:
+## Three-Dimensional Legal Reasoning
+
+### Dimension 1: Pertinence Score (0-100)
+Does the tesis address the legal problem?
+- **Materia Match**: Exact (+35), Partial (+15)
+- **Structural Legal Terms**: Up to +35 for matching dictionaries
+- **Detected Concepts**: Up to +20 for case-specific matches
+- **Lexical Overlap**: Up to +10 for description tokens
+
+### Dimension 2: Authority Score (0-100)
+How strong is this criterion legally?
 - **Type**: Jurisprudencia (+40) vs Tesis Aislada (+15)
-- **Instancia**: SCJN/Pleno (+30), Salas (+25), Tribunales Colegiados (+20)
-- **Época**: Décima/Onceava (+20), Novena (+10), Earlier (+5)
-- **Materia Match**: Exact (+25), Partial (+10)
-- **Antigüedad**: <10 years (+10), 10-25 years (+5), >25 years (+0)
+- **Órgano Emisor**: Pleno (+30), SCJN (+28), Salas (+25), TC (+18)
+- **Época**: 11a (+20), 10a (+18), 9a (+12), Earlier (+5)
+- **Antigüedad**: <5 años (+10), <10 (+8), <20 (+5), <30 (+3)
+
+### Dimension 3: Risk Flags
+Potential legal weaknesses:
+- `tesis_aislada` - Not binding jurisprudence
+- `epoca_antigua` - From old epoch
+- `criterio_no_reiterado` - Has not been consistently applied
+- `autoridad_limitada` - From lower court
+- `materia_parcial` - Only partial subject matter match
+
+### Two-Stage Ranking
+1. **Stage 1 (Pertinence Filter)**: Keep only tesis with pertinence ≥ 25, sort by pertinence, take top 15
+2. **Stage 2 (Authority Rank)**: Sort by authority (pertinence as tiebreaker), take top 5
+
+### Role-Aware Adjustments
+Light contextual scoring (±5 points):
+- **Actor/Quejoso**: Favor procedencia criteria
+- **Demandado/Tercero**: Favor improcedencia, exceptions
+
+## UX Labels
+- **Fuerza**: Alta/Media/Baja (combined score)
+- **Pertinencia**: Alta/Media (only shown if passed threshold)
+- **Autoridad**: Alta/Media/Baja (legal strength)
+- **Riesgos**: Badge count with warning icon
+
+## Design Philosophy
+- Legal confidence > Algorithmic sophistication
+- Explainable reasoning > Black box
+- Conservative outputs > Aggressive recall
+- Never expose numeric scores to users
 
 ## Design Guidelines
 - Professional, conservative, law-firm-grade aesthetic
