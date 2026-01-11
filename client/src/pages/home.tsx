@@ -11,16 +11,16 @@ import type { AnalysisResult } from "@shared/schema";
 
 const EXAMPLE_PROMPTS = [
   {
-    text: "Despido de trabajador de organismo público descentralizado",
-    description: "Derecho laboral y administrativo",
+    text: "Trabajador despedido injustificadamente reclama salarios caídos y el patrón no pagó las cuotas del Seguro Social",
+    description: "Laboral - Salarios caídos y Seguro Social",
   },
   {
-    text: "Amparo contra multa administrativa sin audiencia previa",
-    description: "Amparo y garantías",
+    text: "Recurso de queja contra auto que niega suspensión en juicio de amparo indirecto",
+    description: "Amparo - Recursos y suspensión",
   },
   {
-    text: "Cláusula penal excesiva en contrato civil",
-    description: "Derecho civil contractual",
+    text: "Pruebas documentales ofrecidas en segunda instancia en materia mercantil",
+    description: "Mercantil - Procedimiento probatorio",
   },
 ];
 
@@ -89,7 +89,7 @@ export default function Home() {
               id="caso"
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
-              placeholder="Ej: Un trabajador fue despedido de un organismo público descentralizado sin procedimiento previo. El empleador argumenta que no aplica la legislación laboral federal sino la ley del servicio civil local..."
+              placeholder="Ej: Un trabajador fue despedido sin justificación y reclama el pago de salarios caídos. El patrón no pagó las cuotas correspondientes al Seguro Social durante el tiempo de la relación laboral..."
               className="min-h-[160px] resize-none text-base leading-relaxed font-sans"
               data-testid="textarea-caso"
             />
