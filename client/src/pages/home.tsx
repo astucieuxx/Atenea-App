@@ -73,7 +73,7 @@ export default function Home() {
               Atenea
             </h1>
             <p className="text-primary font-medium">
-              El copiloto jurídico inteligente del litigante moderno
+              El copiloto jurídico del litigante moderno
             </p>
           </div>
           <p className="text-muted-foreground text-sm max-w-md mx-auto leading-relaxed">
