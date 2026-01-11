@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -38,9 +39,9 @@ export function TesisDetailModal({ tesis, caseId, isOpen, onClose }: TesisDetail
             <DialogTitle className="text-base font-semibold uppercase leading-snug pr-8">
               {tesis.title}
             </DialogTitle>
-            <p className="text-sm text-muted-foreground">
+            <DialogDescription className="text-sm text-muted-foreground">
               {tesis.instancia || tesis.organo_jurisdiccional} • {tesis.epoca}
-            </p>
+            </DialogDescription>
           </DialogHeader>
 
           <Tabs defaultValue="resumen" className="flex-1 overflow-hidden flex flex-col">
