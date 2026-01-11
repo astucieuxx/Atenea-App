@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileEdit, AlertTriangle, CheckCircle, Info } from "lucide-react";
+import { FileEdit, AlertTriangle, CheckCircle, Info, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -90,8 +90,27 @@ export function TesisDetailModal({ tesis, caseId, isOpen, onClose }: TesisDetail
             <DialogTitle className="text-base font-semibold uppercase leading-snug pr-8">
               {tesis.title}
             </DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground">
-              {tesis.instancia || tesis.organo_jurisdiccional} • {tesis.epoca} • Registro: {tesis.id}
+            <DialogDescription className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-1">
+              <span>{tesis.instancia || tesis.organo_jurisdiccional}</span>
+              <span>•</span>
+              <span>{tesis.epoca}</span>
+              <span>•</span>
+              <span>Registro: {tesis.id}</span>
+              {tesis.url && (
+                <>
+                  <span>•</span>
+                  <a 
+                    href={tesis.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-primary hover:underline"
+                    data-testid="link-scjn-original"
+                  >
+                    Ver en SCJN
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
 
