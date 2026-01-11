@@ -67,12 +67,14 @@ export default function Home() {
       <div className="w-full max-w-xl space-y-8">
         <div className="text-center space-y-4">
           <div className="flex justify-center mb-2">
-            <img 
-              src={ateneaLogo} 
-              alt="Atenea" 
-              className="h-32 w-auto object-contain"
-              data-testid="img-logo"
-            />
+            <div className="bg-white rounded-2xl p-4">
+              <img 
+                src={ateneaLogo} 
+                alt="Atenea" 
+                className="h-40 w-auto object-contain"
+                data-testid="img-logo"
+              />
+            </div>
           </div>
           <div className="space-y-2">
             <p className="text-primary font-medium text-lg">
