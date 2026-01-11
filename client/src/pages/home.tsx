@@ -64,15 +64,20 @@ export default function Home() {
   return (
     <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center px-4 py-16">
       <div className="w-full max-w-xl space-y-8">
-        <div className="text-center space-y-3">
+        <div className="text-center space-y-4">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-primary text-primary-foreground mb-2">
             <Scale className="w-7 h-7" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground" data-testid="text-titulo-principal">
-            Atenea
-          </h1>
-          <p className="text-muted-foreground">
-            Copiloto de Jurisprudencia en México
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold tracking-tight text-foreground" data-testid="text-titulo-principal">
+              Atenea
+            </h1>
+            <p className="text-primary font-medium">
+              El copiloto jurídico inteligente del litigante moderno
+            </p>
+          </div>
+          <p className="text-muted-foreground text-sm max-w-md mx-auto leading-relaxed">
+            Analiza criterios judiciales, evalúa riesgos y construye argumentos jurídicos sólidos en minutos.
           </p>
         </div>
 
