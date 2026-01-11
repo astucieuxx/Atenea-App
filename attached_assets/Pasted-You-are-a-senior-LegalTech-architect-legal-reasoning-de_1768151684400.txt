@@ -1,0 +1,213 @@
+You are a senior LegalTech architect, legal reasoning designer, and TypeScript engineer.
+
+You are improving an existing MVP called:
+
+CRITERIO — Copiloto de Jurisprudencia en México
+
+The app already:
+- Loads ~1000 tesis from a CSV
+- Uses rule-based scoring
+- Returns top 5 jurisprudence
+- Generates legal insights
+
+Your task is NOT to rebuild from scratch.
+Your task is to EVOLVE the existing legal reasoning engine to a senior-lawyer-level copilot.
+
+--------------------------------------------------
+CORE PHILOSOPHY
+--------------------------------------------------
+
+- Legal trust > algorithmic sophistication
+- Explainable reasoning > black-box AI
+- Conservative outputs > aggressive recall
+- Think like a senior litigator, not a search engine
+
+--------------------------------------------------
+CURRENT STATE (ASSUMED)
+--------------------------------------------------
+
+The system currently:
+- Tokenizes case description
+- Detects materia via keywords
+- Scores tesis using:
+  tipo, instancia, época, materia, antigüedad, lexical overlap
+- Returns top 5 with fuerza Alta / Media / Baja
+
+This foundation is GOOD.
+Do NOT discard it.
+Extend it.
+
+--------------------------------------------------
+TARGET STATE
+--------------------------------------------------
+
+Transform the engine so it reasons in THREE DISTINCT DIMENSIONS:
+
+1) PERTINENCE — Does this thesis address the legal problem?
+2) AUTHORITY — How strong is this criterion legally?
+3) RISK — How attackable or limited is its use?
+
+These dimensions must be explicit in code and in outputs.
+
+--------------------------------------------------
+STEP 1: FORMAL CASE CLASSIFICATION
+--------------------------------------------------
+
+Before scoring any thesis, classify the CASE itself.
+
+Create a function:
+
+classifyCase(descripcion: string) => {
+  materia: string
+  via_procesal?: string
+  acto_reclamado?: string
+  problema_juridico: string
+}
+
+Rules:
+- Use conservative keyword heuristics
+- Never invent facts
+- Prefer under-classification to over-classification
+
+This classification becomes the CONTEXT for all later scoring.
+
+--------------------------------------------------
+STEP 2: SPLIT SCORING INTO 3 LAYERS
+--------------------------------------------------
+
+Replace the single numeric score with:
+
+A) pertinence_score (0–100)
+B) authority_score (0–100)
+C) risk_flags (array of strings)
+
+--------------------------------------------------
+A) PERTINENCE SCORE
+--------------------------------------------------
+
+Measures: “Does this thesis actually speak to the problem?”
+
+Signals:
+- materia match (high weight)
+- overlap with STRUCTURAL LEGAL TERMS
+- presence of key legal concepts in title / abstract
+- partial match allowed, but penalized
+
+Introduce weighted legal concept dictionaries, e.g.:
+
+amparo_terms = ["improcedencia", "sobreseimiento", "acto reclamado", "interés jurídico"]
+laboral_terms = ["despido", "rescisión", "carga de la prueba"]
+civil_terms = ["nulidad", "cláusula penal", "daños y perjuicios"]
+
+Structural terms are weighted MORE than generic tokens.
+
+--------------------------------------------------
+B) AUTHORITY SCORE
+--------------------------------------------------
+
+Measures: “How strong is this thesis if cited?”
+
+Reuse and refine existing logic:
+- tipo
+- instancia
+- época
+- antigüedad
+- órgano jurisdiccional
+
+Authority score must be INDEPENDENT of pertinence.
+
+--------------------------------------------------
+C) RISK FLAGS (NOT A SCORE)
+--------------------------------------------------
+
+Identify legal weaknesses such as:
+
+- "tesis_aislada"
+- "epoca_antigua"
+- "criterio_no_reiterado"
+- "autoridad_limitada"
+
+Risk flags DO NOT reduce ranking directly.
+They are surfaced in UX as warnings and insights.
+
+--------------------------------------------------
+STEP 3: TWO-STAGE RANKING
+--------------------------------------------------
+
+1) Filter by pertinence_score (keep top ~15)
+2) Rank final top 5 by authority_score
+3) Preserve risk flags for explanation
+
+This mirrors how a senior lawyer thinks:
+“First relevance, then strength.”
+
+--------------------------------------------------
+STEP 4: ROLE-AWARE CONTEXT (IMPORTANT)
+--------------------------------------------------
+
+Introduce a light role-aware adjustment:
+
+If user role = ACTOR:
+- Slightly favor pro-action criteria
+
+If user role = DEMANDADO:
+- Slightly favor improcedencia / defensiva criteria
+
+This can be heuristic and conservative.
+
+--------------------------------------------------
+STEP 5: STRUCTURED LEGAL INSIGHT
+--------------------------------------------------
+
+Replace free-text insight with a FIXED STRUCTURE:
+
+generateInsight(caseContext, tesis) => {
+  what_it_says: string
+  when_it_applies: string
+  main_risk: string
+  recommendation: string
+}
+
+Tone:
+- Conservative
+- Senior
+- Educational
+- Never absolute
+
+--------------------------------------------------
+STEP 6: UX OUTPUT REQUIREMENTS
+--------------------------------------------------
+
+Each recommended thesis must expose:
+
+- Pertinence: Alta / Media
+- Authority: Alta / Media / Baja
+- Risk warnings (if any)
+- “Por qué aplica” (explicit reasoning)
+
+NEVER expose raw numeric scores.
+
+--------------------------------------------------
+STEP 7: ENGINEERING CONSTRAINTS
+--------------------------------------------------
+
+- Stay in Node.js + TypeScript
+- No external APIs
+- No embeddings yet
+- No LLM calls
+- Optimize for readability and extensibility
+- Add comments explaining legal reasoning decisions
+
+--------------------------------------------------
+DELIVERABLE
+--------------------------------------------------
+
+Produce:
+- Refactored legal reasoning module
+- Clear separation of concerns
+- Updated scoring logic
+- Improved explainability
+- Same API shape, richer internals
+
+The goal is not more results.
+The goal is BETTER JUDGMENT.

@@ -28,20 +28,64 @@ export interface Tesis {
   extracted_at: string;
 }
 
-// Strength levels for UX
+// Strength levels for UX display
 export type FuerzaLevel = "Alta" | "Media" | "Baja";
 
-// Scored tesis for recommendations
+// Pertinence levels - how relevant is the thesis to the problem
+export type PertinenciaLevel = "Alta" | "Media";
+
+// Authority levels - how strong is the criterion legally
+export type AutoridadLevel = "Alta" | "Media" | "Baja";
+
+// Risk flags - potential weaknesses in citing this thesis
+export type RiskFlag = 
+  | "tesis_aislada"           // Not binding jurisprudence
+  | "epoca_antigua"           // From old epoch, may not reflect current interpretation
+  | "criterio_no_reiterado"   // Has not been consistently applied
+  | "autoridad_limitada"      // From lower court
+  | "materia_parcial";        // Only partial subject matter match
+
+// Structured legal insight for each thesis
+export interface LegalInsight {
+  what_it_says: string;
+  when_it_applies: string;
+  main_risk: string;
+  recommendation: string;
+}
+
+// Case classification result
+export interface CaseClassification {
+  materia: string;
+  via_procesal?: string;
+  acto_reclamado?: string;
+  problema_juridico: string;
+  detected_concepts: string[];
+}
+
+// Three-dimensional scoring for tesis
+export interface TesisDimensionalScore {
+  pertinence_score: number;  // 0-100: Does this thesis address the legal problem?
+  authority_score: number;   // 0-100: How strong is this criterion legally?
+  risk_flags: RiskFlag[];    // Legal weaknesses to surface in UX
+}
+
+// Scored tesis with the new dimensional scoring
 export interface ScoredTesis extends Tesis {
   score: number;
   fuerza: FuerzaLevel;
   razon_fuerza: string;
   por_que_aplica: string;
+  // New dimensional scoring
+  pertinencia: PertinenciaLevel;
+  autoridad: AutoridadLevel;
+  riesgos: RiskFlag[];
+  insight?: LegalInsight;
 }
 
-// Case analysis request
+// Case analysis request with optional role
 export const analyzeRequestSchema = z.object({
   descripcion: z.string().min(10, "La descripción debe tener al menos 10 caracteres"),
+  rol_procesal: z.enum(["Actor", "Demandado", "Tercero Interesado", "Quejoso"]).optional(),
 });
 
 export type AnalyzeRequest = z.infer<typeof analyzeRequestSchema>;
@@ -51,6 +95,7 @@ export interface AnalysisResult {
   id: string;
   descripcion: string;
   problema_juridico: string;
+  clasificacion: CaseClassification;
   tesis_relevantes: ScoredTesis[];
   insight_juridico: string;
   created_at: string;
@@ -59,9 +104,9 @@ export interface AnalysisResult {
 // Argument generation request
 export const argumentRequestSchema = z.object({
   tesis_id: z.string(),
-  tipo_escrito: z.enum(["Demanda", "Contestación", "Amparo"]),
-  rol_procesal: z.enum(["Actor", "Demandado"]),
-  tono: z.enum(["Conservador", "Técnico", "Contundente"]),
+  tipo_escrito: z.enum(["Demanda", "Contestación de Demanda", "Amparo Directo", "Amparo Indirecto", "Recurso de Revisión"]),
+  rol_procesal: z.enum(["Actor", "Demandado", "Tercero Interesado", "Quejoso"]),
+  tono: z.enum(["Conservador", "Persuasivo", "Técnico"]),
 });
 
 export type ArgumentRequest = z.infer<typeof argumentRequestSchema>;

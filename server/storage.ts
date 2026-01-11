@@ -8,7 +8,8 @@ import type {
 } from "@shared/schema";
 import { loadTesisFromCSV } from "./csv-loader";
 import { 
-  identifyLegalProblem, 
+  identifyLegalProblem,
+  classifyCase,
   scoreTesis, 
   generateInsight,
   generateArgument 
@@ -17,7 +18,7 @@ import {
 export interface IStorage {
   getAllTesis(): Tesis[];
   getTesisById(id: string): Tesis | undefined;
-  analyzeCase(descripcion: string): AnalysisResult;
+  analyzeCase(descripcion: string, rol_procesal?: string): AnalysisResult;
   getAnalysisById(id: string): AnalysisResult | undefined;
   getAllHistory(): CaseHistoryEntry[];
   createArgument(
@@ -73,6 +74,9 @@ export class MemStorage implements IStorage {
       ...tesis,
       score: 50,
       fuerza: "Media",
+      pertinencia: "Media",
+      autoridad: "Media",
+      riesgos: [],
       razon_fuerza: `Tesis ${tesis.tipo.toLowerCase().includes("jurisprudencia") ? "jurisprudencial" : "aislada"} de ${tesis.organo_jurisdiccional}.`,
       por_que_aplica: "Criterio jurisprudencial relevante para el caso.",
     };
@@ -81,10 +85,11 @@ export class MemStorage implements IStorage {
     return scored;
   }
 
-  analyzeCase(descripcion: string): AnalysisResult {
+  analyzeCase(descripcion: string, rol_procesal?: string): AnalysisResult {
     const id = randomUUID();
-    const problema_juridico = identifyLegalProblem(descripcion);
-    const tesis_relevantes = scoreTesis(this.tesisList, descripcion, 5);
+    const clasificacion = classifyCase(descripcion);
+    const problema_juridico = clasificacion.problema_juridico;
+    const tesis_relevantes = scoreTesis(this.tesisList, descripcion, 5, rol_procesal);
     const insight_juridico = generateInsight(tesis_relevantes, descripcion);
 
     tesis_relevantes.forEach((t) => {
@@ -95,6 +100,7 @@ export class MemStorage implements IStorage {
       id,
       descripcion,
       problema_juridico,
+      clasificacion,
       tesis_relevantes,
       insight_juridico,
       created_at: new Date().toISOString(),
