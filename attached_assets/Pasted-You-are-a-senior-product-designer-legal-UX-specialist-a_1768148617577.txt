@@ -1,0 +1,317 @@
+You are a senior product designer, legal UX specialist, and full-stack engineer.
+
+You are building an MVP for a Mexican LegalTech app called:
+
+CRITERIO  
+Subtitle: “Copiloto de Jurisprudencia en México”
+
+--------------------------------------------------
+PRODUCT VISION
+--------------------------------------------------
+
+CRITERIO is NOT:
+- A generic chatbot
+- A keyword-based search engine
+- A jurisprudence PDF viewer
+- A replacement for lawyers
+
+CRITERIO IS:
+“A senior Mexican lawyer guiding your reasoning on jurisprudence and tesis.”
+
+The app helps lawyers:
+1) Frame the legal problem correctly
+2) Identify the most relevant tesis / jurisprudencia
+3) Understand their strength and limitations
+4) Use them safely in legal arguments
+
+Trust, clarity, and legal conservatism are the top priorities.
+
+--------------------------------------------------
+TARGET USER
+--------------------------------------------------
+
+Mexican litigating lawyers (civil, labor, admin, amparo) who:
+- Depend on jurisprudence correctness
+- Fear citing weak or inapplicable criteria
+- Are not necessarily tech-savvy
+- Think in legal problems, not keywords
+- Prefer structured reasoning over speed
+
+--------------------------------------------------
+DATA SOURCE (CRITICAL)
+--------------------------------------------------
+
+A CSV file is provided and must be used as the ONLY jurisprudence source.
+
+CSV HEADERS (exact):
+- id
+- url
+- title
+- abstract
+- body
+- body_full
+- extra_sections
+- instancia
+- epoca
+- materias
+- tesis_numero
+- tipo
+- fuente
+- localizacion_libro
+- localizacion_tomo
+- localizacion_mes
+- localizacion_anio
+- localizacion_pagina
+- organo_jurisdiccional
+- clave
+- notas
+- formas_integracion
+- fecha_publicacion
+- extracted_at
+
+Rules:
+- Load the CSV on backend startup
+- Parse into structured objects
+- NEVER invent jurisprudence content
+- ALL legal text must come from CSV fields
+- body_full is the authoritative legal text
+
+--------------------------------------------------
+MVP SCOPE (STRICT – DO NOT ADD MORE)
+--------------------------------------------------
+
+Include ONLY:
+
+1) Case-based input (text)
+2) Legal issue identification (heuristic / rule-based)
+3) Jurisprudence recommendation (top 3–5 only)
+4) Jurisprudence detail view
+5) Argument generation (paragraph-level only)
+6) Case history
+
+DO NOT include:
+- Payments
+- Authentication
+- User roles
+- Document uploads
+- External APIs
+- Full legal brief drafting
+
+--------------------------------------------------
+TECH STACK
+--------------------------------------------------
+
+Frontend:
+- React
+- Tailwind CSS
+- Clean, sober, law-firm-grade UI
+
+Backend:
+- Node.js
+- Express
+
+Data:
+- CSV loaded into memory
+- In-memory filtering and scoring
+
+AI / Reasoning:
+- NO real LLM calls yet
+- Use explainable rule-based legal reasoning
+
+--------------------------------------------------
+LEGAL REASONING LOGIC (VERY IMPORTANT)
+--------------------------------------------------
+
+Implement an EXPLAINABLE relevance and strength system.
+
+### STEP 1: Legal Issue Identification
+From the case description:
+- Infer the legal problem in professional legal Spanish
+- Do NOT hallucinate facts
+- Keep it conservative and general
+
+Example:
+“Determinación de la procedencia del juicio de amparo indirecto contra actos relacionados con el desahogo de pruebas.”
+
+--------------------------------------------------
+
+### STEP 2: Relevance Scoring (Internal)
+
+Score each tesis using ONLY CSV data.
+
+Suggested rules:
+
+TYPE:
+- Jurisprudencia → +40
+- Tesis Aislada → +15
+
+INSTANCIA:
+- SCJN / Salas → +30
+- Tribunales Colegiados → +20
+
+ÉPOCA:
+- Décima / Onceava → +20
+- Novena → +10
+- Séptima o anterior → +5
+
+MATERIA MATCH:
+- Exact match → +25
+- Partial match → +10
+
+ANTIGÜEDAD:
+- < 10 years → +10
+- 10–25 years → +5
+- > 25 years → +0
+
+--------------------------------------------------
+
+### STEP 3: Strength Label (UX)
+
+DO NOT show numeric scores.
+
+Map internally to:
+- Fuerza Alta
+- Fuerza Media
+- Fuerza Baja
+
+ALWAYS explain why:
+Example:
+“Fuerza media por tratarse de tesis aislada de Tribunal Colegiado emitida en una época anterior.”
+
+--------------------------------------------------
+UX / UI STRUCTURE
+--------------------------------------------------
+
+### 1. HOME SCREEN
+
+Minimal, clean, professional.
+
+Centered input:
+"Describe el caso o problema jurídico"
+
+Example prompts (clickable):
+- “Despido de trabajador de organismo público descentralizado”
+- “Amparo contra multa administrativa sin audiencia”
+- “Cláusula penal excesiva en contrato civil”
+
+Primary CTA:
+“Analizar caso”
+
+--------------------------------------------------
+
+### 2. CASE ANALYSIS SCREEN
+
+This screen is the CORE of the app.
+
+Order is MANDATORY.
+
+--------------------------------
+A) Problema Jurídico Identificado
+--------------------------------
+- Clear legal framing
+- Professional Spanish
+- Builds immediate trust
+- No speculative language
+
+--------------------------------
+B) Jurisprudencia Relevante (Top 3–5)
+--------------------------------
+
+Each card shows:
+- Title (from CSV)
+- Tipo (Jurisprudencia / Tesis Aislada)
+- Instancia
+- Órgano jurisdiccional
+- Materia
+- Fuerza (Alta / Media / Baja)
+- “Por qué aplica” (1–2 conservative sentences)
+
+Cards must be ranked by relevance.
+
+--------------------------------
+C) Insight Jurídico
+--------------------------------
+
+High-value legal reasoning, such as:
+- Whether the criterion is dominant or isolated
+- Typical procedural limitations
+- Common opposing arguments
+- When judges usually accept or reject it
+
+--------------------------------------------------
+
+### 3. JURISPRUDENCE DETAIL VIEW
+
+Tabbed layout.
+
+TAB 1 – Resumen Ejecutivo
+- Qué dice la tesis
+- Cuándo aplica
+- Cuándo NO aplica
+
+TAB 2 – Texto Oficial
+- Use body_full
+- Clean formatting
+- Highlight key legal phrases
+
+TAB 3 – Cómo Usarla
+- Conservative example argument
+- Proper legal citation
+- No invented claims
+
+CTA Button:
+“Usar esta tesis en mi escrito”
+
+--------------------------------------------------
+
+### 4. ARGUMENT GENERATION MODAL
+
+Ask user:
+- Tipo de escrito (Demanda / Contestación / Amparo)
+- Rol procesal (Actor / Demandado)
+- Tono (Conservador / Técnico / Contundente)
+
+Generate:
+- 1–2 legal paragraphs
+- Based ONLY on CSV content
+- Conservative, court-safe language
+- Copy-ready
+- No hallucinations
+
+--------------------------------------------------
+
+### 5. CASE HISTORY
+
+Store cases as legal folders, NOT chat logs.
+
+Each case shows:
+- Case title
+- Date
+- Jurisprudence used
+- Arguments generated
+
+This should feel like a lawyer’s work file.
+
+--------------------------------------------------
+DESIGN GUIDELINES
+--------------------------------------------------
+
+- White / light gray / dark blue palette
+- Serious, calm, professional
+- No flashy animations
+- Strong visual hierarchy
+- Typography optimized for reading legal text
+
+--------------------------------------------------
+DELIVERABLE
+--------------------------------------------------
+
+Produce:
+- A fully working MVP
+- CSV-backed jurisprudence logic
+- Clean, conservative UX
+- Clear component structure
+- Easy future extension with real AI and embeddings
+
+The priority is:
+LEGAL TRUST > UX CLARITY > REASONING FLOW > TECH SOPHISTICATION
