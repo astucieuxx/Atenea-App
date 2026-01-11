@@ -16,7 +16,7 @@ export function Header() {
           </div>
           <div className="flex flex-col">
             <span className="text-lg font-semibold tracking-tight text-foreground" data-testid="text-logo">
-              CRITERIO
+              Atenea
             </span>
             <span className="text-xs text-muted-foreground hidden sm:block">
               Copiloto de Jurisprudencia

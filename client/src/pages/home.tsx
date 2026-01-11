@@ -73,7 +73,7 @@ export default function Home() {
             <Scale className="w-8 h-8 text-primary" />
           </div>
           <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-foreground" data-testid="text-titulo-principal">
-            CRITERIO
+            Atenea
           </h1>
           <p className="text-lg text-muted-foreground max-w-md mx-auto leading-relaxed">
             Tu copiloto de jurisprudencia mexicana. Analiza casos, identifica tesis relevantes y genera argumentos legales.
@@ -150,7 +150,7 @@ export default function Home() {
 
         <div className="text-center pt-8 border-t border-border">
           <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
-            CRITERIO utiliza razonamiento basado en reglas sobre jurisprudencia oficial mexicana. 
+            Atenea utiliza razonamiento basado en reglas sobre jurisprudencia oficial mexicana. 
             Los resultados son orientativos y deben ser verificados por un profesional del derecho.
           </p>
         </div>

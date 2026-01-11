@@ -1,4 +1,4 @@
-# CRITERIO - Design Guidelines
+# Atenea - Design Guidelines
 
 ## Design Approach
 **Legal-First Professional Interface** - Drawing inspiration from enterprise legal software with emphasis on trust, clarity, and information hierarchy. Think Westlaw/LexisNexis professional tone meets modern web app cleanliness.
@@ -27,7 +27,7 @@
 ## Component Library
 
 ### Navigation
-- Clean top bar with CRITERIO logo (text-based, professional)
+- Clean top bar with Atenea logo (text-based, professional)
 - Secondary nav: "Nuevo Análisis" | "Historial"
 - Minimal, no hamburger menus
 

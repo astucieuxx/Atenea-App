@@ -1,7 +1,7 @@
-# CRITERIO - Copiloto de Jurisprudencia en México
+# Atenea - Copiloto de Jurisprudencia en México
 
 ## Overview
-CRITERIO is a Mexican LegalTech MVP that helps lawyers analyze legal cases, identify relevant jurisprudence (tesis), and generate conservative legal arguments. It is NOT a generic chatbot but a "senior Mexican lawyer guiding your reasoning on jurisprudence and tesis."
+Atenea is a Mexican LegalTech MVP that helps lawyers analyze legal cases, identify relevant jurisprudence (tesis), and generate conservative legal arguments. It is NOT a generic chatbot but a "senior Mexican lawyer guiding your reasoning on jurisprudence and tesis."
 
 ## Tech Stack
 - **Frontend**: React + Tailwind CSS + shadcn/ui components
