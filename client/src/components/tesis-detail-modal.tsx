@@ -78,7 +78,7 @@ export function TesisDetailModal({ tesis, caseId, isOpen, onClose }: TesisDetail
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-2xl max-h-[90vh] sm:max-h-[85vh] overflow-hidden flex flex-col w-[95vw] sm:w-full p-4 sm:p-6">
           <DialogHeader className="space-y-3 pb-4 border-b">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary" className="text-xs font-medium">
@@ -96,35 +96,37 @@ export function TesisDetailModal({ tesis, caseId, isOpen, onClose }: TesisDetail
           </DialogHeader>
 
           <Tabs defaultValue="resumen" className="flex-1 overflow-hidden flex flex-col">
-            <TabsList className="w-full justify-start bg-transparent border-b rounded-none h-auto p-0 gap-0">
-              <TabsTrigger 
-                value="resumen" 
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3"
-              >
-                Resumen
-              </TabsTrigger>
-              <TabsTrigger 
-                value="texto" 
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3"
-              >
-                Texto Oficial
-              </TabsTrigger>
-              <TabsTrigger 
-                value="uso" 
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3"
-              >
-                Cómo Usarla
-              </TabsTrigger>
-              {hasRisks && (
+            <div className="overflow-x-auto -mx-1 px-1 border-b">
+              <TabsList className="w-max min-w-full justify-start bg-transparent rounded-none h-auto p-0 gap-0">
                 <TabsTrigger 
-                  value="riesgos" 
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 gap-1"
+                  value="resumen" 
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 sm:px-4 py-2.5 text-xs sm:text-sm whitespace-nowrap"
                 >
-                  <AlertTriangle className="h-3 w-3" />
-                  Riesgos
+                  Resumen
                 </TabsTrigger>
-              )}
-            </TabsList>
+                <TabsTrigger 
+                  value="texto" 
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 sm:px-4 py-2.5 text-xs sm:text-sm whitespace-nowrap"
+                >
+                  Texto Oficial
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="uso" 
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 sm:px-4 py-2.5 text-xs sm:text-sm whitespace-nowrap"
+                >
+                  Cómo Usarla
+                </TabsTrigger>
+                {hasRisks && (
+                  <TabsTrigger 
+                    value="riesgos" 
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 sm:px-4 py-2.5 text-xs sm:text-sm whitespace-nowrap gap-1"
+                  >
+                    <AlertTriangle className="h-3 w-3" />
+                    Riesgos
+                  </TabsTrigger>
+                )}
+              </TabsList>
+            </div>
 
             <div className="flex-1 overflow-y-auto py-4">
               <TabsContent value="resumen" className="mt-0 space-y-4">
@@ -269,13 +271,13 @@ export function TesisDetailModal({ tesis, caseId, isOpen, onClose }: TesisDetail
             </div>
           </Tabs>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t">
-            <Button variant="outline" onClick={onClose}>
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 pt-4 border-t">
+            <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
               Cerrar
             </Button>
-            <Button onClick={() => setShowArgumentModal(true)} className="gap-2">
+            <Button onClick={() => setShowArgumentModal(true)} className="gap-2 w-full sm:w-auto">
               <FileEdit className="h-4 w-4" />
-              Usar esta tesis en mi escrito
+              <span className="sm:inline">Usar esta tesis en mi escrito</span>
             </Button>
           </div>
         </DialogContent>
