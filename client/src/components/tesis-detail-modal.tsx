@@ -79,7 +79,7 @@ export function TesisDetailModal({ tesis, caseId, isOpen, onClose }: TesisDetail
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="max-w-2xl max-h-[90vh] sm:max-h-[85vh] overflow-hidden flex flex-col w-[95vw] sm:w-full p-4 sm:p-6">
-          <DialogHeader className="space-y-3 pb-4 border-b">
+          <DialogHeader className="shrink-0 space-y-3 pb-4 border-b">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="secondary" className="text-xs font-medium">
                 {tesis.tipo}
@@ -95,8 +95,8 @@ export function TesisDetailModal({ tesis, caseId, isOpen, onClose }: TesisDetail
             </DialogDescription>
           </DialogHeader>
 
-          <Tabs defaultValue="resumen" className="flex-1 overflow-hidden flex flex-col">
-            <div className="overflow-x-auto -mx-1 px-1 border-b">
+          <Tabs defaultValue="resumen" className="flex-1 min-h-0 overflow-hidden flex flex-col">
+            <div className="overflow-x-auto -mx-1 px-1 border-b shrink-0">
               <TabsList className="w-max min-w-full justify-start bg-transparent rounded-none h-auto p-0 gap-0">
                 <TabsTrigger 
                   value="resumen" 
@@ -128,7 +128,7 @@ export function TesisDetailModal({ tesis, caseId, isOpen, onClose }: TesisDetail
               </TabsList>
             </div>
 
-            <div className="flex-1 overflow-y-auto py-4">
+            <div className="flex-1 min-h-0 overflow-y-auto py-4 pb-6">
               <TabsContent value="resumen" className="mt-0 space-y-4">
                 {insight ? (
                   <>
@@ -271,13 +271,13 @@ export function TesisDetailModal({ tesis, caseId, isOpen, onClose }: TesisDetail
             </div>
           </Tabs>
 
-          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 pt-4 border-t">
+          <div className="shrink-0 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 pt-4 border-t bg-background">
             <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
               Cerrar
             </Button>
             <Button onClick={() => setShowArgumentModal(true)} className="gap-2 w-full sm:w-auto">
               <FileEdit className="h-4 w-4" />
-              <span className="sm:inline">Usar esta tesis en mi escrito</span>
+              Usar esta tesis
             </Button>
           </div>
         </DialogContent>
