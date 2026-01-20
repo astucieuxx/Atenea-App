@@ -417,13 +417,24 @@ async function loadTesisFromChunks(baseDir: string): Promise<Tesis[]> {
 export async function loadTesisFromJSON(filePath?: string): Promise<Tesis[]> {
   const assetsDir = path.join(process.cwd(), "attached_assets");
   
+  console.log("=".repeat(60));
+  console.log("🚀 NEW LOADER VERSION - Scanning for all chunk files");
+  console.log("=".repeat(60));
   console.log(`🔍 Searching for tesis files in: ${assetsDir}`);
+  
+  // Check if directory exists
+  if (!fs.existsSync(assetsDir)) {
+    console.error(`❌ Directory does not exist: ${assetsDir}`);
+    return [];
+  }
+  
   const existingFiles = listFilesInDir(assetsDir, "tesis");
   console.log(`📁 Found ${existingFiles.length} files matching 'tesis': ${existingFiles.slice(0, 10).join(", ")}${existingFiles.length > 10 ? "..." : ""}`);
   
   // First, try to load from chunks (preferred for large files)
   const chunkedTesis = await loadTesisFromChunks(assetsDir);
   if (chunkedTesis.length > 0) {
+    console.log("=".repeat(60));
     return chunkedTesis;
   }
   
