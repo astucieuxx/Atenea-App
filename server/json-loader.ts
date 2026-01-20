@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as readline from "readline";
+import * as zlib from "zlib";
 import type { Tesis } from "@shared/schema";
 
 /**
@@ -184,9 +185,15 @@ function loadTesisFromJSONL(filePath: string): Promise<Tesis[]> {
   let lineNumber = 0;
 
   return new Promise<Tesis[]>((resolve, reject) => {
-    const fileStream = fs.createReadStream(filePath, { encoding: "utf-8" });
+    // Check if file is gzipped
+    const isGzipped = filePath.endsWith('.gz');
+    const fileStream = fs.createReadStream(filePath);
+    const inputStream = isGzipped 
+      ? fileStream.pipe(zlib.createGunzip())
+      : fileStream;
+    
     const rl = readline.createInterface({
-      input: fileStream,
+      input: inputStream,
       crlfDelay: Infinity, // Handle Windows line endings
     });
 
@@ -322,11 +329,16 @@ function loadTesisFromRegularJSON(filePath: string): Tesis[] {
  * and loads tesis from the appropriate file.
  */
 export async function loadTesisFromJSON(filePath?: string): Promise<Tesis[]> {
-  // Default to looking for tesis.jsonl first, then tesis.json in attached_assets folder
+  // Default to looking for tesis.jsonl (or .gz) first, then tesis.json in attached_assets folder
   const defaultPath = filePath || (() => {
     const jsonlPath = path.join(process.cwd(), "attached_assets", "tesis.jsonl");
+    const jsonlGzPath = path.join(process.cwd(), "attached_assets", "tesis.jsonl.gz");
     const jsonPath = path.join(process.cwd(), "attached_assets", "tesis.json");
     
+    // Check compressed version first (smaller, preferred)
+    if (fs.existsSync(jsonlGzPath)) {
+      return jsonlGzPath;
+    }
     if (fs.existsSync(jsonlPath)) {
       return jsonlPath;
     }
@@ -345,8 +357,11 @@ export async function loadTesisFromJSON(filePath?: string): Promise<Tesis[]> {
 
   // Check file extension to determine format
   const ext = path.extname(defaultPath).toLowerCase();
+  const baseExt = defaultPath.endsWith('.gz') 
+    ? path.extname(defaultPath.slice(0, -3)).toLowerCase()
+    : ext;
   
-  if (ext === ".jsonl") {
+  if (baseExt === ".jsonl" || ext === ".gz") {
     return await loadTesisFromJSONL(defaultPath);
   } else {
     return loadTesisFromRegularJSON(defaultPath);
