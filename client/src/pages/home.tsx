@@ -76,7 +76,7 @@ export default function Home() {
           </div>
           <div className="space-y-2">
             <p className="text-primary font-medium text-lg">
-              El copiloto jurídico del litigante moderno
+              El asistente virtual del litigante moderno
             </p>
           </div>
           <p className="text-muted-foreground text-sm max-w-md mx-auto leading-relaxed">

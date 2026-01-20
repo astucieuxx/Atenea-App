@@ -18,7 +18,7 @@ export async function registerRoutes(
         });
       }
 
-      const analysis = storage.analyzeCase(parsed.data.descripcion, parsed.data.rol_procesal);
+      const analysis = await storage.analyzeCase(parsed.data.descripcion, parsed.data.rol_procesal);
       return res.json(analysis);
     } catch (error) {
       console.error("Error analyzing case:", error);

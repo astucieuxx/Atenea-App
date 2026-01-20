@@ -6,7 +6,7 @@ import type {
   CaseHistoryEntry, 
   GeneratedArgument 
 } from "@shared/schema";
-import { loadTesisFromCSV } from "./csv-loader";
+import { loadTesisFromJSON } from "./json-loader";
 import { 
   identifyLegalProblem,
   classifyCase,
@@ -18,7 +18,7 @@ import {
 export interface IStorage {
   getAllTesis(): Tesis[];
   getTesisById(id: string): Tesis | undefined;
-  analyzeCase(descripcion: string, rol_procesal?: string): AnalysisResult;
+  analyzeCase(descripcion: string, rol_procesal?: string): Promise<AnalysisResult>;
   getAnalysisById(id: string): AnalysisResult | undefined;
   getAllHistory(): CaseHistoryEntry[];
   createArgument(
@@ -36,15 +36,34 @@ export class MemStorage implements IStorage {
   private history: Map<string, CaseHistoryEntry>;
   private arguments: Map<string, GeneratedArgument>;
   private tesisScoreCache: Map<string, ScoredTesis>;
+  private loadingPromise: Promise<void>;
+  private isLoaded: boolean = false;
 
   constructor() {
-    console.log("Initializing storage and loading CSV...");
-    this.tesisList = loadTesisFromCSV();
+    console.log("Initializing storage and loading JSON...");
+    // Start with empty list, will be populated asynchronously
+    this.tesisList = [];
     this.analyses = new Map();
     this.history = new Map();
     this.arguments = new Map();
     this.tesisScoreCache = new Map();
-    console.log(`Storage initialized with ${this.tesisList.length} tesis`);
+    
+    // Load tesis asynchronously and track when it's done
+    this.loadingPromise = loadTesisFromJSON().then((tesis) => {
+      this.tesisList = tesis;
+      this.isLoaded = true;
+      console.log(`Storage initialized with ${this.tesisList.length} tesis`);
+    }).catch((error) => {
+      console.error("Error loading tesis:", error);
+      console.log("Storage initialized with 0 tesis (error loading file)");
+      this.isLoaded = true; // Mark as loaded even on error so requests don't hang
+    });
+  }
+
+  private async waitForLoad(): Promise<void> {
+    if (!this.isLoaded) {
+      await this.loadingPromise;
+    }
   }
 
   getAllTesis(): Tesis[] {
@@ -85,7 +104,10 @@ export class MemStorage implements IStorage {
     return scored;
   }
 
-  analyzeCase(descripcion: string, rol_procesal?: string): AnalysisResult {
+  async analyzeCase(descripcion: string, rol_procesal?: string): Promise<AnalysisResult> {
+    // Wait for tesis to be loaded before analyzing
+    await this.waitForLoad();
+    
     const id = randomUUID();
     const clasificacion = classifyCase(descripcion);
     const problema_juridico = clasificacion.problema_juridico;
