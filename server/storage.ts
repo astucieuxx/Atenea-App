@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import path from "path";
 import type { 
   Tesis, 
   ScoredTesis, 
