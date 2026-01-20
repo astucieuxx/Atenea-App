@@ -4,6 +4,18 @@ import * as readline from "readline";
 import * as zlib from "zlib";
 import type { Tesis } from "@shared/schema";
 
+// Helper to list files in directory for debugging
+function listFilesInDir(dir: string, pattern: string): string[] {
+  try {
+    if (!fs.existsSync(dir)) {
+      return [];
+    }
+    return fs.readdirSync(dir).filter(f => f.includes(pattern));
+  } catch (error) {
+    return [];
+  }
+}
+
 /**
  * Maps a raw JSON object to the Tesis interface
  * Handles both flat structure and nested structure (with metadata object)
@@ -405,11 +417,17 @@ async function loadTesisFromChunks(baseDir: string): Promise<Tesis[]> {
 export async function loadTesisFromJSON(filePath?: string): Promise<Tesis[]> {
   const assetsDir = path.join(process.cwd(), "attached_assets");
   
+  console.log(`🔍 Searching for tesis files in: ${assetsDir}`);
+  const existingFiles = listFilesInDir(assetsDir, "tesis");
+  console.log(`📁 Found ${existingFiles.length} files matching 'tesis': ${existingFiles.slice(0, 10).join(", ")}${existingFiles.length > 10 ? "..." : ""}`);
+  
   // First, try to load from chunks (preferred for large files)
   const chunkedTesis = await loadTesisFromChunks(assetsDir);
   if (chunkedTesis.length > 0) {
     return chunkedTesis;
   }
+  
+  console.log("⚠️  No chunks found, trying single file fallback...");
 
   // If no chunks, try single file (backward compatibility)
   const defaultPath = filePath || (() => {

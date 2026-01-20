@@ -41,6 +41,9 @@ export class MemStorage implements IStorage {
 
   constructor() {
     console.log("Initializing storage and loading JSON...");
+    console.log(`Working directory: ${process.cwd()}`);
+    console.log(`Looking for tesis files in: ${path.join(process.cwd(), "attached_assets")}`);
+    
     // Start with empty list, will be populated asynchronously
     this.tesisList = [];
     this.analyses = new Map();
@@ -52,9 +55,15 @@ export class MemStorage implements IStorage {
     this.loadingPromise = loadTesisFromJSON().then((tesis) => {
       this.tesisList = tesis;
       this.isLoaded = true;
-      console.log(`Storage initialized with ${this.tesisList.length} tesis`);
+      if (tesis.length === 0) {
+        console.warn("⚠️  WARNING: No tesis loaded! Check if files exist in attached_assets/");
+        console.warn("   Expected files: tesis_part1.jsonl, tesis_part2.jsonl, etc.");
+      } else {
+        console.log(`✅ Storage initialized with ${this.tesisList.length} tesis`);
+      }
     }).catch((error) => {
-      console.error("Error loading tesis:", error);
+      console.error("❌ Error loading tesis:", error);
+      console.error("Stack trace:", error.stack);
       console.log("Storage initialized with 0 tesis (error loading file)");
       this.isLoaded = true; // Mark as loaded even on error so requests don't hang
     });
