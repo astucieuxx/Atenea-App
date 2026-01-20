@@ -5,6 +5,8 @@ server/public
 vite.config.ts.*
 *.tar.gz
 
-# Large data files - upload directly to Replit (compressed preferred)
+# Large data files - upload directly to Replit (chunked or compressed)
 attached_assets/tesis.jsonl
 attached_assets/tesis.jsonl.gz
+attached_assets/tesis_part*.jsonl
+attached_assets/tesis_part*.jsonl.gz

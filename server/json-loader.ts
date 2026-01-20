@@ -328,12 +328,94 @@ function loadTesisFromRegularJSON(filePath: string): Tesis[] {
  * Main loader function that automatically detects JSONL vs JSON format
  * and loads tesis from the appropriate file.
  */
+/**
+ * Loads tesis from multiple chunked files (tesis_part1.jsonl, tesis_part2.jsonl, etc.)
+ * Also handles sub-chunks (tesis_part2_chunk1.jsonl, etc.) for files that were split further
+ * This allows splitting large files into smaller uploadable chunks
+ */
+async function loadTesisFromChunks(baseDir: string): Promise<Tesis[]> {
+  const allTesis: Tesis[] = [];
+  let partNum = 1;
+  let foundAny = false;
+
+  while (true) {
+    // Try both compressed and uncompressed versions
+    const chunkPathGz = path.join(baseDir, `tesis_part${partNum}.jsonl.gz`);
+    const chunkPath = path.join(baseDir, `tesis_part${partNum}.jsonl`);
+    
+    let chunkPathToUse: string | null = null;
+    
+    if (fs.existsSync(chunkPathGz)) {
+      chunkPathToUse = chunkPathGz;
+    } else if (fs.existsSync(chunkPath)) {
+      // Check if this part was further split into sub-chunks
+      let subChunkNum = 1;
+      const subChunks: string[] = [];
+      
+      while (true) {
+        const subChunkPath = path.join(baseDir, `tesis_part${partNum}_chunk${subChunkNum}.jsonl`);
+        if (fs.existsSync(subChunkPath)) {
+          subChunks.push(subChunkPath);
+          subChunkNum++;
+        } else {
+          break;
+        }
+      }
+      
+      if (subChunks.length > 0) {
+        // Load all sub-chunks for this part
+        const beforeCount = allTesis.length;
+        console.log(`Loading part ${partNum} (split into ${subChunks.length} sub-chunks)...`);
+        for (const subChunkPath of subChunks) {
+          console.log(`  Loading sub-chunk: ${path.basename(subChunkPath)}`);
+          const subChunkTesis = await loadTesisFromJSONL(subChunkPath);
+          allTesis.push(...subChunkTesis);
+        }
+        const loadedFromPart = allTesis.length - beforeCount;
+        console.log(`  Loaded ${loadedFromPart} tesis from part ${partNum} (total so far: ${allTesis.length})`);
+        partNum++;
+        foundAny = true;
+        continue;
+      } else {
+        chunkPathToUse = chunkPath;
+      }
+    } else {
+      // No more chunks found
+      break;
+    }
+
+    if (chunkPathToUse) {
+      foundAny = true;
+      console.log(`Loading chunk ${partNum} from: ${path.basename(chunkPathToUse)}`);
+      const chunkTesis = await loadTesisFromJSONL(chunkPathToUse);
+      allTesis.push(...chunkTesis);
+      console.log(`Loaded ${chunkTesis.length} tesis from chunk ${partNum} (total so far: ${allTesis.length})`);
+      partNum++;
+    }
+  }
+
+  if (foundAny) {
+    console.log(`Total loaded from ${partNum - 1} parts: ${allTesis.length} tesis`);
+    return allTesis;
+  }
+
+  return []; // No chunks found
+}
+
 export async function loadTesisFromJSON(filePath?: string): Promise<Tesis[]> {
-  // Default to looking for tesis.jsonl (or .gz) first, then tesis.json in attached_assets folder
+  const assetsDir = path.join(process.cwd(), "attached_assets");
+  
+  // First, try to load from chunks (preferred for large files)
+  const chunkedTesis = await loadTesisFromChunks(assetsDir);
+  if (chunkedTesis.length > 0) {
+    return chunkedTesis;
+  }
+
+  // If no chunks, try single file (backward compatibility)
   const defaultPath = filePath || (() => {
-    const jsonlPath = path.join(process.cwd(), "attached_assets", "tesis.jsonl");
-    const jsonlGzPath = path.join(process.cwd(), "attached_assets", "tesis.jsonl.gz");
-    const jsonPath = path.join(process.cwd(), "attached_assets", "tesis.json");
+    const jsonlPath = path.join(assetsDir, "tesis.jsonl");
+    const jsonlGzPath = path.join(assetsDir, "tesis.jsonl.gz");
+    const jsonPath = path.join(assetsDir, "tesis.json");
     
     // Check compressed version first (smaller, preferred)
     if (fs.existsSync(jsonlGzPath)) {
@@ -349,9 +431,9 @@ export async function loadTesisFromJSON(filePath?: string): Promise<Tesis[]> {
   })();
 
   if (!fs.existsSync(defaultPath)) {
-    console.error("Tesis file not found at:", defaultPath);
-    console.error("Please ensure your file is located at:", defaultPath);
-    console.error("Supported formats: tesis.jsonl (JSON Lines) or tesis.json (JSON array)");
+    console.error("Tesis file not found. Options:");
+    console.error("  1. Single file: attached_assets/tesis.jsonl or tesis.jsonl.gz");
+    console.error("  2. Chunked files: attached_assets/tesis_part1.jsonl, tesis_part2.jsonl, etc.");
     return [];
   }
 
