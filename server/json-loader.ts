@@ -347,71 +347,71 @@ function loadTesisFromRegularJSON(filePath: string): Tesis[] {
  */
 async function loadTesisFromChunks(baseDir: string): Promise<Tesis[]> {
   const allTesis: Tesis[] = [];
-  let partNum = 1;
-  let foundAny = false;
+  
+  console.log(`🔍 Starting to load chunks from: ${baseDir}`);
 
-  while (true) {
-    // Try both compressed and uncompressed versions
-    const chunkPathGz = path.join(baseDir, `tesis_part${partNum}.jsonl.gz`);
-    const chunkPath = path.join(baseDir, `tesis_part${partNum}.jsonl`);
+  // First, find all part files by scanning the directory
+  const allFiles = fs.readdirSync(baseDir);
+  const partFiles: { num: number; path: string; isGz: boolean }[] = [];
+  
+  // Find all tesis_part*.jsonl and tesis_part*.jsonl.gz files
+  for (const file of allFiles) {
+    const partMatch = file.match(/^tesis_part(\d+)\.jsonl(\.gz)?$/);
+    if (partMatch) {
+      const partNum = parseInt(partMatch[1], 10);
+      const isGz = !!partMatch[2];
+      const filePath = path.join(baseDir, file);
+      partFiles.push({ num: partNum, path: filePath, isGz });
+    }
+  }
+  
+  // Sort by part number
+  partFiles.sort((a, b) => a.num - b.num);
+  
+  console.log(`📦 Found ${partFiles.length} part files to load`);
+
+  if (partFiles.length === 0) {
+    return [];
+  }
+
+  // Load each part file
+  for (const partFile of partFiles) {
+    // Check if this part was further split into sub-chunks
+    let subChunkNum = 1;
+    const subChunks: string[] = [];
     
-    let chunkPathToUse: string | null = null;
-    
-    if (fs.existsSync(chunkPathGz)) {
-      chunkPathToUse = chunkPathGz;
-    } else if (fs.existsSync(chunkPath)) {
-      // Check if this part was further split into sub-chunks
-      let subChunkNum = 1;
-      const subChunks: string[] = [];
-      
-      while (true) {
-        const subChunkPath = path.join(baseDir, `tesis_part${partNum}_chunk${subChunkNum}.jsonl`);
-        if (fs.existsSync(subChunkPath)) {
-          subChunks.push(subChunkPath);
-          subChunkNum++;
-        } else {
-          break;
-        }
-      }
-      
-      if (subChunks.length > 0) {
-        // Load all sub-chunks for this part
-        const beforeCount = allTesis.length;
-        console.log(`Loading part ${partNum} (split into ${subChunks.length} sub-chunks)...`);
-        for (const subChunkPath of subChunks) {
-          console.log(`  Loading sub-chunk: ${path.basename(subChunkPath)}`);
-          const subChunkTesis = await loadTesisFromJSONL(subChunkPath);
-          allTesis.push(...subChunkTesis);
-        }
-        const loadedFromPart = allTesis.length - beforeCount;
-        console.log(`  Loaded ${loadedFromPart} tesis from part ${partNum} (total so far: ${allTesis.length})`);
-        partNum++;
-        foundAny = true;
-        continue;
+    while (true) {
+      const subChunkPath = path.join(baseDir, `tesis_part${partFile.num}_chunk${subChunkNum}.jsonl`);
+      if (fs.existsSync(subChunkPath)) {
+        subChunks.push(subChunkPath);
+        subChunkNum++;
       } else {
-        chunkPathToUse = chunkPath;
+        break;
       }
+    }
+    
+    if (subChunks.length > 0) {
+      // Load all sub-chunks for this part
+      const beforeCount = allTesis.length;
+      console.log(`Loading part ${partFile.num} (split into ${subChunks.length} sub-chunks)...`);
+      for (const subChunkPath of subChunks) {
+        console.log(`  Loading sub-chunk: ${path.basename(subChunkPath)}`);
+        const subChunkTesis = await loadTesisFromJSONL(subChunkPath);
+        allTesis.push(...subChunkTesis);
+      }
+      const loadedFromPart = allTesis.length - beforeCount;
+      console.log(`  Loaded ${loadedFromPart} tesis from part ${partFile.num} (total so far: ${allTesis.length})`);
     } else {
-      // No more chunks found
-      break;
-    }
-
-    if (chunkPathToUse) {
-      foundAny = true;
-      console.log(`Loading chunk ${partNum} from: ${path.basename(chunkPathToUse)}`);
-      const chunkTesis = await loadTesisFromJSONL(chunkPathToUse);
+      // Load the single part file
+      console.log(`Loading part ${partFile.num} from: ${path.basename(partFile.path)}`);
+      const chunkTesis = await loadTesisFromJSONL(partFile.path);
       allTesis.push(...chunkTesis);
-      console.log(`Loaded ${chunkTesis.length} tesis from chunk ${partNum} (total so far: ${allTesis.length})`);
-      partNum++;
+      console.log(`Loaded ${chunkTesis.length} tesis from part ${partFile.num} (total so far: ${allTesis.length})`);
     }
   }
 
-  if (foundAny) {
-    console.log(`Total loaded from ${partNum - 1} parts: ${allTesis.length} tesis`);
-    return allTesis;
-  }
-
-  return []; // No chunks found
+  console.log(`✅ Total loaded from ${partFiles.length} parts: ${allTesis.length} tesis`);
+  return allTesis;
 }
 
 export async function loadTesisFromJSON(filePath?: string): Promise<Tesis[]> {
