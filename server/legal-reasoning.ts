@@ -119,19 +119,35 @@ export function classifyCase(descripcion: string): CaseClassification {
   const normalized = normalizeText(descripcion);
   const tokens = tokenize(descripcion);
   
-  // Detectar materia principal
+  // Detectar materia principal - primero por keywords directos
   let materia = "general";
-  let maxMatches = 0;
   const detectedConcepts: string[] = [];
   
-  for (const [mat, terms] of Object.entries(STRUCTURAL_LEGAL_TERMS)) {
-    const matches = terms.filter(term => normalized.includes(normalizeText(term)));
-    if (matches.length > maxMatches) {
-      maxMatches = matches.length;
-      materia = mat;
+  // Detección directa por palabra clave de materia
+  if (normalized.includes("amparo")) materia = "amparo";
+  else if (normalized.includes("laboral") || normalized.includes("despido") || normalized.includes("trabajador")) materia = "laboral";
+  else if (normalized.includes("penal") || normalized.includes("delito") || normalized.includes("sentencia condenatoria")) materia = "penal";
+  else if (normalized.includes("civil") || normalized.includes("contrato") || normalized.includes("arrendamiento")) materia = "civil";
+  else if (normalized.includes("fiscal") || normalized.includes("impuesto") || normalized.includes("credito fiscal")) materia = "fiscal";
+  else if (normalized.includes("mercantil") || normalized.includes("pagare") || normalized.includes("cheque")) materia = "mercantil";
+  else if (normalized.includes("administrativ")) materia = "administrativo";
+  
+  // Refinar con términos estructurales si no hay detección directa
+  if (materia === "general") {
+    let maxMatches = 0;
+    for (const [mat, terms] of Object.entries(STRUCTURAL_LEGAL_TERMS)) {
+      const matches = terms.filter(term => normalized.includes(normalizeText(term)));
+      if (matches.length > maxMatches) {
+        maxMatches = matches.length;
+        materia = mat;
+      }
     }
-    detectedConcepts.push(...matches.slice(0, 3));
   }
+  
+  // Detectar conceptos relevantes de la materia identificada
+  const materiaTerms = STRUCTURAL_LEGAL_TERMS[materia] || [];
+  const matchedConcepts = materiaTerms.filter(term => normalized.includes(normalizeText(term)));
+  detectedConcepts.push(...matchedConcepts.slice(0, 5));
   
   // Detectar vía procesal (si es identificable)
   let via_procesal: string | undefined;
@@ -581,6 +597,97 @@ function getPorQueAplica(
 // Implementa el ranking de dos etapas
 // ===========================================================================
 
+function fastPreFilter(
+  tesisList: Tesis[],
+  caseClassification: CaseClassification,
+  descripcion: string,
+  maxCandidates: number = 5000
+): Tesis[] {
+  const descTokens = new Set(tokenize(descripcion));
+  const descLower = descripcion.toLowerCase();
+  const materiaLower = caseClassification.materia.toLowerCase();
+  const materiaPrefix = materiaLower.slice(0, 4);
+  
+  // Detect materia from description directly for better matching
+  let detectedMaterias: string[] = [];
+  if (descLower.includes("amparo")) detectedMaterias.push("amparo", "común", "constitucional");
+  if (descLower.includes("laboral") || descLower.includes("trabajo") || descLower.includes("despido")) detectedMaterias.push("laboral");
+  if (descLower.includes("civil") || descLower.includes("contrato")) detectedMaterias.push("civil");
+  if (descLower.includes("penal") || descLower.includes("delito")) detectedMaterias.push("penal");
+  if (descLower.includes("fiscal") || descLower.includes("impuesto")) detectedMaterias.push("fiscal", "administrativa");
+  if (descLower.includes("mercantil") || descLower.includes("pagaré")) detectedMaterias.push("mercantil");
+  if (descLower.includes("administrativ")) detectedMaterias.push("administrativa");
+  
+  // If no materia detected, use general + amparo as fallback (most common)
+  if (detectedMaterias.length === 0) {
+    detectedMaterias = ["amparo", "común", "civil", "constitucional"];
+  }
+  
+  // Get structural terms from all detected materias
+  let allStructuralTerms: string[] = [];
+  for (const m of detectedMaterias) {
+    allStructuralTerms = allStructuralTerms.concat(STRUCTURAL_LEGAL_TERMS[m] || []);
+  }
+  const descHasStructural = allStructuralTerms.filter(term => descLower.includes(term));
+  
+  const scored: Array<{ tesis: Tesis; quickScore: number }> = [];
+  const descTokensArray = Array.from(descTokens);
+  
+  for (const tesis of tesisList) {
+    let quickScore = 0;
+    const tesisMaterias = (tesis.materias || "").toLowerCase();
+    const tesisTitle = (tesis.title || "").toLowerCase();
+    const tesisBody = (tesis.body || "").toLowerCase();
+    
+    // Match against detected materias
+    for (const m of detectedMaterias) {
+      if (tesisMaterias.includes(m)) {
+        quickScore += 30;
+        break;
+      }
+    }
+    
+    // Fallback materia match
+    if (quickScore === 0) {
+      if (materiaLower !== "general" && tesisMaterias.includes(materiaLower)) {
+        quickScore += 25;
+      } else if (tesisMaterias.includes("común")) {
+        quickScore += 20;
+      }
+    }
+    
+    // Structural term matching
+    for (const term of descHasStructural) {
+      if (tesisTitle.includes(term) || tesisBody.includes(term)) {
+        quickScore += 15;
+        break;
+      }
+    }
+    
+    // Token matching
+    let tokenMatches = 0;
+    for (const token of descTokensArray) {
+      if (token.length > 4 && (tesisTitle.includes(token) || tesisBody.includes(token))) {
+        tokenMatches++;
+        if (tokenMatches >= 2) {
+          quickScore += 10;
+          break;
+        }
+      }
+    }
+    
+    if (quickScore >= 20) {
+      scored.push({ tesis, quickScore });
+    }
+  }
+  
+  scored.sort((a, b) => b.quickScore - a.quickScore);
+  
+  console.log(`Pre-filter: ${tesisList.length} -> ${Math.min(scored.length, maxCandidates)} candidates`);
+  
+  return scored.slice(0, maxCandidates).map(s => s.tesis);
+}
+
 export function scoreTesis(
   tesisList: Tesis[],
   descripcion: string,
@@ -590,9 +697,12 @@ export function scoreTesis(
   // PASO 1: Clasificar el caso formalmente
   const caseClassification = classifyCase(descripcion);
   
-  // PASO 2: Calcular scores dimensionales para todas las tesis
+  // PASO 1.5: Pre-filtro rápido para reducir conjunto de datos
+  const candidates = fastPreFilter(tesisList, caseClassification, descripcion, 5000);
+  
+  // PASO 2: Calcular scores dimensionales para las tesis candidatas
   const dimensionalScores: Array<{ tesis: Tesis; scores: TesisDimensionalScore }> = 
-    tesisList.map((tesis) => {
+    candidates.map((tesis) => {
       let pertinence_score = calculatePertinenceScore(tesis, caseClassification, descripcion);
       const authority_score = calculateAuthorityScore(tesis);
       
