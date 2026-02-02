@@ -119,5 +119,32 @@ export async function registerRoutes(
     }
   });
 
+  // ============================================================================
+  // RAG ENDPOINT: /api/ask
+  // ============================================================================
+  app.post("/api/ask", async (req, res) => {
+    try {
+      const { question } = req.body;
+      
+      if (!question || typeof question !== "string" || question.trim().length < 10) {
+        return res.status(400).json({ 
+          error: "La pregunta debe ser una cadena de texto con al menos 10 caracteres." 
+        });
+      }
+
+      // Importar dinámicamente para evitar errores si el módulo no está disponible
+      const { askQuestion } = await import("./rag/ask");
+      const response = await askQuestion(question.trim());
+
+      return res.json(response);
+    } catch (error) {
+      console.error("Error in /api/ask:", error);
+      return res.status(500).json({ 
+        error: "Error al procesar la pregunta",
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   return httpServer;
 }

@@ -135,6 +135,19 @@ export interface CaseHistoryEntry {
   created_at: string;
 }
 
+// RAG Ask response (from /api/ask)
+export interface AskResponse {
+  answer: string;
+  tesisUsed: Array<{
+    id: string;
+    title: string;
+    citation: string;
+    relevanceScore: number;
+  }>;
+  hasEvidence: boolean;
+  confidence: "high" | "medium" | "low";
+}
+
 // API response types
 export interface ApiResponse<T> {
   success: boolean;

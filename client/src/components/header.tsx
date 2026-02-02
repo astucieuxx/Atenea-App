@@ -30,7 +30,18 @@ export function Header() {
               }`}
               data-testid="link-inicio"
             >
-              Inicio
+              Análisis
+            </Button>
+          </Link>
+          <Link href="/ask">
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 ${
+                location === "/ask" ? "text-primary-foreground bg-primary-foreground/10" : ""
+              }`}
+            >
+              RAG
             </Button>
           </Link>
           <Link href="/historial">
@@ -42,7 +53,7 @@ export function Header() {
               }`}
               data-testid="link-mis-casos"
             >
-              Mis Casos
+              Historial
             </Button>
           </Link>
           <Button

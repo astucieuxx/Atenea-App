@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Loader2, FileText, Building2, Sparkles } from "lucide-react";
 import ateneaLogo from "@/assets/atenea-logo.png";
@@ -133,6 +133,20 @@ export default function Home() {
                 </span>
               </button>
             ))}
+          </div>
+        </div>
+
+        <div className="pt-6 border-t border-border">
+          <div className="text-center space-y-3">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+              O prueba la búsqueda RAG
+            </p>
+            <Link href="/ask">
+              <Button variant="outline" className="gap-2">
+                <Sparkles className="h-4 w-4" />
+                Búsqueda con IA y respuestas generadas
+              </Button>
+            </Link>
           </div>
         </div>
 

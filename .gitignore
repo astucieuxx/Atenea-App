@@ -10,3 +10,8 @@ attached_assets/tesis.jsonl
 attached_assets/tesis.jsonl.gz
 attached_assets/tesis_part*.jsonl
 attached_assets/tesis_part*.jsonl.gz
+
+# Environment variables
+.env
+.env.local
+.env.*.local

@@ -9,12 +9,14 @@ import Home from "@/pages/home";
 import Analysis from "@/pages/analysis";
 import TesisDetail from "@/pages/tesis-detail";
 import History from "@/pages/history";
+import Ask from "@/pages/ask";
 import NotFound from "@/pages/not-found";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/ask" component={Ask} />
       <Route path="/analisis/:id" component={Analysis} />
       <Route path="/analisis/:caseId/tesis/:tesisId" component={TesisDetail} />
       <Route path="/historial" component={History} />

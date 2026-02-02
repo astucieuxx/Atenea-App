@@ -10,7 +10,12 @@
     "check": "tsc",
     "db:push": "drizzle-kit push",
     "split-jsonl": "tsx script/split-jsonl.ts",
-    "split-file": "tsx script/split-single-file.ts"
+    "split-file": "tsx script/split-single-file.ts",
+    "rag:status": "tsx script/rag-status.ts",
+    "rag:ingest": "tsx script/ingest-rag.ts",
+    "rag:ingest:single": "tsx script/ingest-rag-single.ts",
+    "rag:explore": "tsx script/explore-jsonl.ts",
+    "rag:test": "tsx script/test-rag.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -75,7 +80,8 @@
     "wouter": "^3.3.5",
     "ws": "^8.18.0",
     "zod": "^3.24.2",
-    "zod-validation-error": "^3.4.0"
+    "zod-validation-error": "^3.4.0",
+    "dotenv": "^16.4.5"
   },
   "devDependencies": {
     "@replit/vite-plugin-cartographer": "^0.4.4",
@@ -98,7 +104,7 @@
     "esbuild": "^0.25.0",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.17",
-    "tsx": "^4.20.5",
+    "tsx": "^4.21.0",
     "typescript": "5.6.3",
     "vite": "^7.3.0"
   },
