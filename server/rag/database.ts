@@ -166,45 +166,73 @@ export async function vectorSearch(
   limit: number = 10,
   minSimilarity: number = 0.5
 ): Promise<VectorSearchResult[]> {
-  const client = await getPool().connect();
+  const maxRetries = 3;
+  let lastError: Error | null = null;
 
-  try {
-    // pgvector usa el operador <=> para distancia coseno
-    // 1 - distancia = similitud
-    const result = await client.query(
-      `SELECT 
-        c.id AS chunk_id,
-        c.tesis_id,
-        c.chunk_text,
-        c.chunk_index,
-        c.chunk_type,
-        1 - (c.embedding <=> $1::vector) AS similarity,
-        t.title,
-        t.tipo,
-        t.organo_jurisdiccional
-      FROM tesis_chunks c
-      INNER JOIN tesis t ON c.tesis_id = t.id
-      WHERE c.embedding IS NOT NULL
-        AND (1 - (c.embedding <=> $1::vector)) >= $2
-      ORDER BY c.embedding <=> $1::vector
-      LIMIT $3`,
-      [JSON.stringify(queryEmbedding), minSimilarity, limit]
-    );
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const client = await getPool().connect();
 
-    return result.rows.map(row => ({
-      chunkId: row.chunk_id,
-      tesisId: row.tesis_id,
-      chunkText: row.chunk_text,
-      chunkIndex: row.chunk_index,
-      chunkType: row.chunk_type,
-      similarity: parseFloat(row.similarity),
-      title: row.title,
-      tipo: row.tipo,
-      organo_jurisdiccional: row.organo_jurisdiccional,
-    }));
-  } finally {
-    client.release();
+    try {
+      // pgvector usa el operador <=> para distancia coseno
+      // 1 - distancia = similitud
+      const result = await client.query(
+        `SELECT 
+          c.id AS chunk_id,
+          c.tesis_id,
+          c.chunk_text,
+          c.chunk_index,
+          c.chunk_type,
+          1 - (c.embedding <=> $1::vector) AS similarity,
+          t.title,
+          t.tipo,
+          t.organo_jurisdiccional
+        FROM tesis_chunks c
+        INNER JOIN tesis t ON c.tesis_id = t.id
+        WHERE c.embedding IS NOT NULL
+          AND (1 - (c.embedding <=> $1::vector)) >= $2
+        ORDER BY c.embedding <=> $1::vector
+        LIMIT $3`,
+        [JSON.stringify(queryEmbedding), minSimilarity, limit]
+      );
+
+      const results = result.rows.map(row => ({
+        chunkId: row.chunk_id,
+        tesisId: row.tesis_id,
+        chunkText: row.chunk_text,
+        chunkIndex: row.chunk_index,
+        chunkType: row.chunk_type,
+        similarity: parseFloat(row.similarity),
+        title: row.title,
+        tipo: row.tipo,
+        organo_jurisdiccional: row.organo_jurisdiccional,
+      }));
+
+      client.release();
+      return results;
+    } catch (error) {
+      client.release();
+      lastError = error as Error;
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      // Si es error de conexión/autenticación, reintentar
+      if ((errorMessage.includes("connection") || 
+           errorMessage.includes("authentication") ||
+           errorMessage.includes("timeout") ||
+           errorMessage.includes("08006")) && 
+          attempt < maxRetries) {
+        const waitTime = Math.pow(2, attempt) * 1000; // Exponential backoff: 1s, 2s, 4s
+        console.warn(`⚠️ Error de conexión en vectorSearch (intento ${attempt}/${maxRetries}), reintentando en ${waitTime}ms...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+      
+      // Si no es error de conexión o ya agotamos reintentos, lanzar error
+      throw error;
+    }
   }
+
+  // Si llegamos aquí, todos los reintentos fallaron
+  throw lastError || new Error("Error desconocido en vectorSearch");
 }
 
 // ============================================================================
@@ -225,48 +253,77 @@ export interface FullTextSearchResult {
 
 /**
  * Búsqueda full-text usando Postgres tsvector
+ * Con reintentos para manejar errores de conexión
  */
 export async function fullTextSearch(
   query: string,
   limit: number = 10
 ): Promise<FullTextSearchResult[]> {
-  const client = await getPool().connect();
+  const maxRetries = 3;
+  let lastError: Error | null = null;
 
-  try {
-    // Usar to_tsquery para búsqueda en español
-    const result = await client.query(
-      `SELECT 
-        c.id AS chunk_id,
-        c.tesis_id,
-        c.chunk_text,
-        c.chunk_index,
-        c.chunk_type,
-        ts_rank(to_tsvector('spanish', c.chunk_text), plainto_tsquery('spanish', $1)) AS rank,
-        t.title,
-        t.tipo,
-        t.organo_jurisdiccional
-      FROM tesis_chunks c
-      INNER JOIN tesis t ON c.tesis_id = t.id
-      WHERE to_tsvector('spanish', c.chunk_text) @@ plainto_tsquery('spanish', $1)
-      ORDER BY rank DESC
-      LIMIT $2`,
-      [query, limit]
-    );
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const client = await getPool().connect();
 
-    return result.rows.map(row => ({
-      chunkId: row.chunk_id,
-      tesisId: row.tesis_id,
-      chunkText: row.chunk_text,
-      chunkIndex: row.chunk_index,
-      chunkType: row.chunk_type,
-      rank: parseFloat(row.rank),
-      title: row.title,
-      tipo: row.tipo,
-      organo_jurisdiccional: row.organo_jurisdiccional,
-    }));
-  } finally {
-    client.release();
+    try {
+      // Usar to_tsquery para búsqueda en español
+      const result = await client.query(
+        `SELECT 
+          c.id AS chunk_id,
+          c.tesis_id,
+          c.chunk_text,
+          c.chunk_index,
+          c.chunk_type,
+          ts_rank(to_tsvector('spanish', c.chunk_text), plainto_tsquery('spanish', $1)) AS rank,
+          t.title,
+          t.tipo,
+          t.organo_jurisdiccional
+        FROM tesis_chunks c
+        INNER JOIN tesis t ON c.tesis_id = t.id
+        WHERE to_tsvector('spanish', c.chunk_text) @@ plainto_tsquery('spanish', $1)
+        ORDER BY rank DESC
+        LIMIT $2`,
+        [query, limit]
+      );
+
+      const results = result.rows.map(row => ({
+        chunkId: row.chunk_id,
+        tesisId: row.tesis_id,
+        chunkText: row.chunk_text,
+        chunkIndex: row.chunk_index,
+        chunkType: row.chunk_type,
+        rank: parseFloat(row.rank),
+        title: row.title,
+        tipo: row.tipo,
+        organo_jurisdiccional: row.organo_jurisdiccional,
+      }));
+
+      client.release();
+      return results;
+    } catch (error) {
+      client.release();
+      lastError = error as Error;
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      // Si es error de conexión/autenticación, reintentar
+      if ((errorMessage.includes("connection") || 
+           errorMessage.includes("authentication") ||
+           errorMessage.includes("timeout") ||
+           errorMessage.includes("08006")) && 
+          attempt < maxRetries) {
+        const waitTime = Math.pow(2, attempt) * 1000; // Exponential backoff: 1s, 2s, 4s
+        console.warn(`⚠️ Error de conexión en fullTextSearch (intento ${attempt}/${maxRetries}), reintentando en ${waitTime}ms...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+      
+      // Si no es error de conexión o ya agotamos reintentos, lanzar error
+      throw error;
+    }
   }
+
+  // Si llegamos aquí, todos los reintentos fallaron
+  throw lastError || new Error("Error desconocido en fullTextSearch");
 }
 
 // ============================================================================
