@@ -99,24 +99,26 @@ export default function Ask() {
               </Button>
             </form>
 
-            {/* Example Questions */}
-            <div className="mt-6 space-y-2">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
-                Ejemplos de preguntas
-              </p>
-              <div className="space-y-2">
-                {EXAMPLE_QUESTIONS.map((example, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => handleExampleClick(example)}
-                    className="w-full text-left p-3 rounded-lg border border-border bg-card hover:bg-accent transition-colors text-sm"
-                  >
-                    {example}
-                  </button>
-                ))}
+            {/* Example Questions - Solo mostrar si no hay resultado */}
+            {!result && (
+              <div className="mt-6 space-y-2">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+                  Ejemplos de preguntas
+                </p>
+                <div className="space-y-2">
+                  {EXAMPLE_QUESTIONS.map((example, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => handleExampleClick(example)}
+                      className="w-full text-left p-3 rounded-lg border border-border bg-card hover:bg-accent transition-colors text-sm"
+                    >
+                      {example}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
 
