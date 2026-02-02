@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowRight, Loader2, FileText, Sparkles, AlertTriangle, CheckCircle2, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,14 +16,63 @@ const EXAMPLE_QUESTIONS = [
   "¿Qué es el interés jurídico en amparo?",
 ];
 
+const STORAGE_KEY = "atenea_rag_search";
+
 export default function Ask() {
-  const [question, setQuestion] = useState("");
+  // Restaurar estado desde localStorage al montar
+  const [question, setQuestion] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          return parsed.question || "";
+        } catch {
+          return "";
+        }
+      }
+    }
+    return "";
+  });
+  
+  // Estado para guardar el resultado restaurado
+  const [savedResult, setSavedResult] = useState<AskResponse | null>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          // Solo restaurar si tiene menos de 1 hora de antigüedad
+          const oneHour = 60 * 60 * 1000;
+          if (parsed.timestamp && Date.now() - parsed.timestamp < oneHour && parsed.result) {
+            return parsed.result;
+          }
+        } catch {
+          // Ignorar errores
+        }
+      }
+    }
+    return null;
+  });
+  
   const { toast } = useToast();
 
   const mutation = useMutation({
     mutationFn: async (data: { question: string }) => {
       const response = await apiRequest("POST", "/api/ask", data);
       return response as AskResponse;
+    },
+    onSuccess: (data, variables) => {
+      // Guardar pregunta y resultado en localStorage
+      if (typeof window !== "undefined") {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          question: variables.question,
+          result: data,
+          timestamp: Date.now(),
+        }));
+      }
+      // Actualizar el estado guardado
+      setSavedResult(data);
     },
     onError: (error: any) => {
       toast({
@@ -33,6 +82,30 @@ export default function Ask() {
       });
     },
   });
+
+  // Limpiar resultado guardado si la pregunta cambia y no coincide con la guardada
+  useEffect(() => {
+    if (question.trim() && savedResult) {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          // Si la pregunta actual no coincide con la guardada, limpiar resultado
+          if (parsed.question && parsed.question.trim() !== question.trim()) {
+            setSavedResult(null);
+          }
+        } catch {
+          // Ignorar errores
+        }
+      } else {
+        // Si no hay datos guardados, limpiar resultado
+        setSavedResult(null);
+      }
+    } else if (!question.trim() && savedResult) {
+      // Si la pregunta está vacía, mantener el resultado (puede ser que el usuario solo esté editando)
+      // No hacer nada
+    }
+  }, [question]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +124,12 @@ export default function Ask() {
     setQuestion(text);
   };
 
-  const result = mutation.data;
+  // Usar resultado de la mutación o del localStorage
+  const result = mutation.data || savedResult;
+  // Solo mostrar ejemplos si NO hay resultado exitoso (verificando que exista answer)
+  // Ocultar completamente cuando hay resultado, cuando se está procesando, o cuando hay error
+  const hasResult = result && result.answer && result.answer.trim().length > 0;
+  const showExamples = !hasResult && !mutation.isPending && !mutation.isError;
 
   return (
     <div className="min-h-[calc(100vh-4rem)] px-4 py-8 sm:px-6 lg:px-8">
@@ -99,8 +177,8 @@ export default function Ask() {
               </Button>
             </form>
 
-            {/* Example Questions - Solo mostrar si no hay resultado */}
-            {!result && (
+            {/* Example Questions - Solo mostrar si NO hay resultado */}
+            {showExamples && (
               <div className="mt-6 space-y-2">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
                   Ejemplos de preguntas
@@ -139,7 +217,7 @@ export default function Ask() {
           </Card>
         )}
 
-        {result && (
+        {hasResult && (
           <div className="space-y-6">
             {/* Answer */}
             <Card>

@@ -47,7 +47,33 @@ export async function registerRoutes(
       const { id } = req.params;
       const analysisId = req.query.analysisId as string | undefined;
       
-      const tesis = storage.getScoredTesisById(id, analysisId);
+      // Primero intentar buscar en el storage en memoria (para análisis tradicionales)
+      let tesis = storage.getScoredTesisById(id, analysisId);
+      
+      // Si no se encuentra, buscar en la base de datos (para tesis del RAG)
+      if (!tesis) {
+        try {
+          const { getTesisById } = await import("./rag/database");
+          const dbTesis = await getTesisById(id);
+          
+          if (dbTesis) {
+            // Convertir Tesis de BD a ScoredTesis para compatibilidad
+            tesis = {
+              ...dbTesis,
+              score: 1.0, // Valor por defecto para tesis de BD
+              fuerza: "Alta" as const,
+              razon_fuerza: "Tesis obtenida de la base de datos RAG",
+              por_que_aplica: "Tesis relevante encontrada mediante búsqueda vectorial",
+              pertinencia: "Alta" as const,
+              autoridad: "Alta" as const,
+              riesgos: [] as const,
+            };
+          }
+        } catch (dbError) {
+          // Si hay error con la BD, continuar y retornar 404 más abajo
+          console.error("Error fetching tesis from database:", dbError);
+        }
+      }
       
       if (!tesis) {
         return res.status(404).json({ error: "Tesis no encontrada" });

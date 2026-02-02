@@ -28,9 +28,9 @@ export interface RetrievalConfig {
 }
 
 export const DEFAULT_RETRIEVAL_CONFIG: RetrievalConfig = {
-  maxResults: 20,
-  finalLimit: 5,
-  minSimilarity: 0.5,
+  maxResults: 30, // Aumentado de 20 a 30 para buscar más resultados
+  finalLimit: 10, // Aumentado de 5 a 10 para tener más opciones
+  minSimilarity: 0.3, // Reducido de 0.5 a 0.3 para ser más permisivo
   vectorWeight: 0.7,
   textWeight: 0.3,
   deduplicateByTesis: true,

@@ -31,7 +31,7 @@ export interface AskConfig {
 
 export const DEFAULT_ASK_CONFIG: AskConfig = {
   maxTesis: 5,
-  minRelevance: 0.5,
+  minRelevance: 0.3, // Reducido de 0.5 a 0.3 para ser más permisivo
   useLLM: true,
   llmProvider: "openai",
   llmModel: "gpt-4o-mini",
@@ -197,9 +197,11 @@ export async function askQuestion(
   });
 
   // Paso 2: Verificar si hay evidencia suficiente
-  const hasEvidence = retrievedTesis.length > 0 && 
-    retrievedTesis.some(rt => rt.relevanceScore >= config.minRelevance);
-
+  // Ser más permisivo: si hay tesis recuperadas, intentar generar respuesta
+  // incluso si la relevancia es baja (el LLM puede decidir si son útiles)
+  const hasEvidence = retrievedTesis.length > 0;
+  
+  // Si no hay ninguna tesis, retornar inmediatamente
   if (!hasEvidence) {
     return {
       answer: "No se encontró jurisprudencia directamente aplicable a esta pregunta. Se recomienda reformular la consulta con términos jurídicos más específicos o consultar otras fuentes.",
@@ -209,34 +211,47 @@ export async function askQuestion(
     };
   }
 
+  // Filtrar tesis con relevancia muy baja (menor a 0.2) antes de enviar al LLM
+  // pero mantener las que tienen al menos algo de relevancia
+  const filteredTesis = retrievedTesis.filter(rt => rt.relevanceScore >= 0.2);
+  
+  // Si después de filtrar no quedan tesis, usar las originales pero con advertencia
+  const tesisToUse = filteredTesis.length > 0 ? filteredTesis : retrievedTesis;
+
   // Paso 3: Generar respuesta (con LLM o sin él)
   let answer: string;
   
   if (config.useLLM) {
     try {
-      answer = await generateAnswerWithLLM(question, retrievedTesis);
+      answer = await generateAnswerWithLLM(question, tesisToUse);
     } catch (error) {
       console.error("Error generating answer, falling back to simple format:", error);
       // Fallback: respuesta simple sin LLM
-      answer = generateSimpleAnswer(question, retrievedTesis);
+      answer = generateSimpleAnswer(question, tesisToUse);
     }
   } else {
-    answer = generateSimpleAnswer(question, retrievedTesis);
+    answer = generateSimpleAnswer(question, tesisToUse);
   }
 
-  // Paso 4: Determinar confianza
-  const avgRelevance = retrievedTesis.reduce((sum, rt) => sum + rt.relevanceScore, 0) / retrievedTesis.length;
+  // Paso 4: Determinar confianza basada en las tesis usadas
+  const avgRelevance = tesisToUse.reduce((sum, rt) => sum + rt.relevanceScore, 0) / tesisToUse.length;
   let confidence: "high" | "medium" | "low";
-  if (avgRelevance >= 0.7 && retrievedTesis.length >= 3) {
+  let finalHasEvidence = true;
+  
+  if (avgRelevance >= 0.6 && tesisToUse.length >= 3) {
     confidence = "high";
-  } else if (avgRelevance >= 0.5 && retrievedTesis.length >= 2) {
+  } else if (avgRelevance >= 0.4 && tesisToUse.length >= 2) {
     confidence = "medium";
-  } else {
+  } else if (avgRelevance >= 0.3 && tesisToUse.length >= 1) {
     confidence = "low";
+  } else {
+    // Si la relevancia promedio es muy baja, marcar como sin evidencia suficiente
+    confidence = "low";
+    finalHasEvidence = false;
   }
 
   // Paso 5: Formatear tesis usadas
-  const tesisUsed = retrievedTesis.map(rt => ({
+  const tesisUsed = tesisToUse.map(rt => ({
     id: rt.tesis.id,
     title: rt.tesis.title,
     citation: formatTesisCitation(rt.tesis),
@@ -246,7 +261,7 @@ export async function askQuestion(
   return {
     answer,
     tesisUsed,
-    hasEvidence: true,
+    hasEvidence: finalHasEvidence,
     confidence,
   };
 }

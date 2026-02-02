@@ -19,6 +19,7 @@ function Router() {
       <Route path="/ask" component={Ask} />
       <Route path="/analisis/:id" component={Analysis} />
       <Route path="/analisis/:caseId/tesis/:tesisId" component={TesisDetail} />
+      <Route path="/tesis/:id" component={TesisDetail} />
       <Route path="/historial" component={History} />
       <Route component={NotFound} />
     </Switch>

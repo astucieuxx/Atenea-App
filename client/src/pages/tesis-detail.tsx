@@ -24,9 +24,12 @@ import { useToast } from "@/hooks/use-toast";
 import type { ScoredTesis } from "@shared/schema";
 
 export default function TesisDetail() {
-  const [, params] = useRoute("/analisis/:caseId/tesis/:tesisId");
-  const caseId = params?.caseId;
-  const tesisId = params?.tesisId;
+  // Soporta ambas rutas: con caseId y sin caseId (para RAG)
+  const [, paramsWithCase] = useRoute("/analisis/:caseId/tesis/:tesisId");
+  const [, paramsWithoutCase] = useRoute("/tesis/:id");
+  
+  const caseId = paramsWithCase?.caseId;
+  const tesisId = paramsWithCase?.tesisId || paramsWithoutCase?.id;
   
   const [modalOpen, setModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -78,10 +81,10 @@ export default function TesisDetail() {
     );
   }
 
-  const backPath = caseId ? `/analisis/${caseId}` : "/";
+  const backPath = caseId ? `/analisis/${caseId}` : "/ask";
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="space-y-8">
         <div className="flex items-start gap-4">
           <Link href={backPath}>
@@ -110,8 +113,8 @@ export default function TesisDetail() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-8 lg:items-start">
+          <div>
             <Tabs defaultValue="resumen" className="w-full">
               <TabsList className="w-full justify-start border-b rounded-none bg-transparent p-0 h-auto">
                 <TabsTrigger
@@ -260,7 +263,7 @@ export default function TesisDetail() {
             </Tabs>
           </div>
 
-          <div className="space-y-6">
+          <div className="lg:sticky lg:top-8 space-y-6">
             <Card className="border-card-border">
               <CardContent className="p-6 space-y-4">
                 <h3 className="text-sm font-medium text-foreground uppercase tracking-wide">
