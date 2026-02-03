@@ -12,19 +12,19 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-lg">
-      <div className="container mx-auto px-6">
-        <div className="flex h-16 lg:h-20 items-center justify-between">
+      <div className="container mx-auto px-4 sm:px-6">
+        <div className="flex h-14 sm:h-16 lg:h-20 items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 flex items-center justify-center">
+          <Link href="/" className="flex items-center gap-2 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center">
               <AteneaLogo 
                 variant="arrow1" 
-                size={40} 
+                size={32}
                 showText={false}
-                className="[&_svg]:w-full [&_svg]:h-full"
+                className="[&_svg]:w-8 [&_svg]:h-8 sm:[&_svg]:w-10 sm:[&_svg]:h-10"
               />
             </div>
-            <span className="font-display text-xl font-semibold text-foreground">
+            <span className="font-display text-lg sm:text-xl font-semibold text-foreground">
               Atenea
             </span>
           </Link>
