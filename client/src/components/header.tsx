@@ -1,76 +1,158 @@
 import { Link, useLocation } from "wouter";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "./theme-provider";
-import ateneaLogo from "@/assets/atenea-logo.png";
+import { AteneaLogo } from "./atenea-logo";
+import { useState } from "react";
 
 export function Header() {
   const [location] = useLocation();
   const { theme, toggleTheme } = useTheme();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-primary text-primary-foreground">
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-2">
-          <img 
-            src={ateneaLogo} 
-            alt="Atenea" 
-            className="h-9 w-auto object-contain brightness-0 invert"
-            data-testid="img-logo-header"
-          />
-        </Link>
+    <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-lg">
+      <div className="container mx-auto px-6">
+        <div className="flex h-16 lg:h-20 items-center justify-between">
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-3">
+            <div className="w-10 h-10 flex items-center justify-center">
+              <AteneaLogo 
+                variant="arrow1" 
+                size={40} 
+                showText={false}
+                className="[&_svg]:w-full [&_svg]:h-full"
+              />
+            </div>
+            <span className="font-display text-xl font-semibold text-foreground">
+              Atenea
+            </span>
+          </Link>
 
-        <nav className="flex items-center gap-1">
-          <Link href="/">
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center gap-1">
+            <Link href="/">
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`${
+                  location === "/" ? "bg-accent text-accent-foreground" : ""
+                }`}
+              >
+                Home
+              </Button>
+            </Link>
+            <Link href="/ask">
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`${
+                  location === "/ask" ? "bg-accent text-accent-foreground" : ""
+                }`}
+              >
+                Búsqueda
+              </Button>
+            </Link>
+            <Link href="/historial">
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`${
+                  location === "/historial" ? "bg-accent text-accent-foreground" : ""
+                }`}
+                data-testid="link-mis-casos"
+              >
+                Historial
+              </Button>
+            </Link>
             <Button
               variant="ghost"
-              size="sm"
-              className={`text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 ${
-                location === "/" ? "text-primary-foreground bg-primary-foreground/10" : ""
-              }`}
-              data-testid="link-inicio"
+              size="icon"
+              onClick={toggleTheme}
+              data-testid="button-toggle-theme"
+              aria-label="Cambiar tema"
             >
-              Análisis
+              {theme === "light" ? (
+                <Moon className="h-4 w-4" />
+              ) : (
+                <Sun className="h-4 w-4" />
+              )}
             </Button>
-          </Link>
-          <Link href="/ask">
-            <Button
-              variant="ghost"
-              size="sm"
-              className={`text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 ${
-                location === "/ask" ? "text-primary-foreground bg-primary-foreground/10" : ""
-              }`}
-            >
-              RAG
-            </Button>
-          </Link>
-          <Link href="/historial">
-            <Button
-              variant="ghost"
-              size="sm"
-              className={`text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 ${
-                location === "/historial" ? "text-primary-foreground bg-primary-foreground/10" : ""
-              }`}
-              data-testid="link-mis-casos"
-            >
-              Historial
-            </Button>
-          </Link>
+          </nav>
+          
+          {/* Mobile menu button */}
           <Button
             variant="ghost"
             size="icon"
-            onClick={toggleTheme}
-            className="text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10"
-            data-testid="button-toggle-theme"
-            aria-label="Cambiar tema"
+            className="md:hidden"
+            aria-label="Menú"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
-            {theme === "light" ? (
-              <Moon className="h-4 w-4" />
-            ) : (
-              <Sun className="h-4 w-4" />
-            )}
+            {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
-        </nav>
+        </div>
+
+        {/* Mobile Menu */}
+        {isMenuOpen && (
+          <div className="md:hidden py-4 border-t border-border">
+            <nav className="flex flex-col gap-2">
+              <Link href="/">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`w-full justify-start ${
+                    location === "/" ? "bg-accent text-accent-foreground" : ""
+                  }`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Home
+                </Button>
+              </Link>
+              <Link href="/ask">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`w-full justify-start ${
+                    location === "/ask" ? "bg-accent text-accent-foreground" : ""
+                  }`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Búsqueda
+                </Button>
+              </Link>
+              <Link href="/historial">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`w-full justify-start ${
+                    location === "/historial" ? "bg-accent text-accent-foreground" : ""
+                  }`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Historial
+                </Button>
+              </Link>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start"
+                onClick={toggleTheme}
+              >
+                {theme === "light" ? (
+                  <>
+                    <Moon className="h-4 w-4 mr-2" />
+                    Modo Oscuro
+                  </>
+                ) : (
+                  <>
+                    <Sun className="h-4 w-4 mr-2" />
+                    Modo Claro
+                  </>
+                )}
+              </Button>
+            </nav>
+          </div>
+        )}
       </div>
     </header>
   );

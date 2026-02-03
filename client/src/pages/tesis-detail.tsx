@@ -24,12 +24,10 @@ import { useToast } from "@/hooks/use-toast";
 import type { ScoredTesis } from "@shared/schema";
 
 export default function TesisDetail() {
-  // Soporta ambas rutas: con caseId y sin caseId (para RAG)
-  const [, paramsWithCase] = useRoute("/analisis/:caseId/tesis/:tesisId");
-  const [, paramsWithoutCase] = useRoute("/tesis/:id");
+  // Ruta para tesis desde RAG
+  const [, params] = useRoute("/tesis/:id");
   
-  const caseId = paramsWithCase?.caseId;
-  const tesisId = paramsWithCase?.tesisId || paramsWithoutCase?.id;
+  const tesisId = params?.id;
   
   const [modalOpen, setModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -70,7 +68,7 @@ export default function TesisDetail() {
           <p className="text-muted-foreground mb-6">
             La tesis solicitada no existe o no está disponible.
           </p>
-          <Link href={caseId ? `/analisis/${caseId}` : "/"}>
+          <Link href="/ask">
             <Button variant="outline" className="gap-2">
               <ArrowLeft className="h-4 w-4" />
               Volver
@@ -81,7 +79,7 @@ export default function TesisDetail() {
     );
   }
 
-  const backPath = caseId ? `/analisis/${caseId}` : "/ask";
+  const backPath = "/ask";
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">

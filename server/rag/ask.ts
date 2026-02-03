@@ -251,6 +251,8 @@ export async function askQuestion(
     maxResults: config.maxTesis * 2, // Recuperar más para filtrar
     finalLimit: config.maxTesis,
     minSimilarity: config.minRelevance,
+    vectorWeight: 0.7,
+    textWeight: 0.3,
     deduplicateByTesis: true,
   });
 

@@ -298,7 +298,7 @@ class ZendeskEmbeddingProvider implements EmbeddingProvider {
             // Si no es JSON válido, intentar extraer números del texto
             const numbers = cleanContent.match(/-?\d+\.?\d*/g);
             if (numbers && numbers.length >= this.dimension) {
-              const embedding = numbers.slice(0, this.dimension).map(n => parseFloat(n));
+              const embedding = numbers.slice(0, this.dimension).map((n: string) => parseFloat(n));
               embeddings.push(embedding);
               break;
             } else {
