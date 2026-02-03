@@ -23,6 +23,16 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
+// Deshabilitar caché en desarrollo
+if (process.env.NODE_ENV !== "production") {
+  app.use((req, res, next) => {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    next();
+  });
+}
+
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",

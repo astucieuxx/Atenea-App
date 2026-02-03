@@ -10,6 +10,207 @@ import { apiRequest } from "@/lib/queryClient";
 import type { AskResponse } from "@shared/schema";
 import { Link } from "wouter";
 
+// Componente para formatear la respuesta con estilo profesional
+function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{ id: string; title: string; citation: string }> }) {
+  // Crear un mapa de tesis por título para buscar referencias
+  const tesisMap = new Map(tesisUsed.map(t => [t.title.toLowerCase(), t]));
+  
+  // Función para procesar el texto y convertirlo en elementos React
+  const formatText = (text: string) => {
+    const lines = text.split('\n');
+    const elements: JSX.Element[] = [];
+    let currentSection: JSX.Element[] = [];
+    let sectionKey = 0;
+    
+    lines.forEach((line, index) => {
+      const trimmedLine = line.trim();
+      
+      // Detectar separadores (---)
+      if (trimmedLine === '---' || trimmedLine.startsWith('---')) {
+        if (currentSection.length > 0) {
+          elements.push(
+            <div key={`section-${sectionKey++}`} className="mb-6 sm:mb-8">
+              {currentSection}
+            </div>
+          );
+          currentSection = [];
+        }
+        // Agregar línea separadora elegante
+        elements.push(
+          <div key={`divider-${index}`} className="my-6 sm:my-8 border-t border-[#d4c5b0]"></div>
+        );
+        return;
+      }
+      
+      // Detectar títulos (líneas que empiezan con ** y terminan con **)
+      const titleMatch = trimmedLine.match(/^\*\*(.+?)\*\*$/);
+      if (titleMatch) {
+        if (currentSection.length > 0) {
+          elements.push(
+            <div key={`section-${sectionKey++}`} className="mb-6 sm:mb-8">
+              {currentSection}
+            </div>
+          );
+          currentSection = [];
+        }
+        // Título sin asteriscos, en negrita
+        elements.push(
+          <h3 key={`title-${index}`} className="text-xl sm:text-2xl font-serif font-bold text-[#2c2416] mb-4 sm:mb-5 mt-6 sm:mt-8 first:mt-0">
+            {titleMatch[1]}
+          </h3>
+        );
+        return;
+      }
+      
+      // Detectar listas con viñetas
+      if (trimmedLine.startsWith('- ')) {
+        const content = trimmedLine.substring(2);
+        // Procesar negritas dentro de la lista
+        const processedContent = processBoldAndLinks(content, tesisMap);
+        currentSection.push(
+          <div key={`list-${index}`} className="mb-3 sm:mb-4 text-base sm:text-lg text-[#2c2416] font-serif leading-relaxed flex items-start gap-3">
+            <span className="text-[#8a7a6a] mt-1.5 shrink-0">•</span>
+            <span className="flex-1" style={{ lineHeight: '1.8' }}>{processedContent}</span>
+          </div>
+        );
+        return;
+      }
+      
+      // Párrafo normal
+      if (trimmedLine.length > 0) {
+        const processedContent = processBoldAndLinks(trimmedLine, tesisMap);
+        currentSection.push(
+          <p key={`para-${index}`} className="mb-3 sm:mb-4 text-base sm:text-lg text-[#2c2416] font-serif leading-relaxed" style={{ lineHeight: '1.8' }}>
+            {processedContent}
+          </p>
+        );
+      } else if (currentSection.length > 0) {
+        // Línea vacía - agregar espacio
+        currentSection.push(<div key={`space-${index}`} className="mb-2"></div>);
+      }
+    });
+    
+    // Agregar última sección
+    if (currentSection.length > 0) {
+      elements.push(
+        <div key={`section-${sectionKey++}`} className="mb-6 sm:mb-8">
+          {currentSection}
+        </div>
+      );
+    }
+    
+    return elements;
+  };
+  
+  // Función para procesar negritas y enlaces a tesis
+  const processBoldAndLinks = (text: string, tesisMap: Map<string, { id: string; title: string; citation: string }>) => {
+    const parts: (string | JSX.Element)[] = [];
+    let lastIndex = 0;
+    
+    // Buscar negritas **texto**
+    const boldRegex = /\*\*(.+?)\*\*/g;
+    let match;
+    
+    while ((match = boldRegex.exec(text)) !== null) {
+      // Agregar texto antes de la negrita
+      if (match.index > lastIndex) {
+        const beforeText = text.substring(lastIndex, match.index);
+        parts.push(...processTesisLinks(beforeText, tesisMap));
+      }
+      
+      // Agregar texto en negrita
+      parts.push(
+        <strong key={`bold-${match.index}`} className="font-bold text-[#2c2416]">
+          {match[1]}
+        </strong>
+      );
+      
+      lastIndex = match.index + match[0].length;
+    }
+    
+    // Agregar texto restante
+    if (lastIndex < text.length) {
+      const remainingText = text.substring(lastIndex);
+      parts.push(...processTesisLinks(remainingText, tesisMap));
+    }
+    
+    return parts.length > 0 ? parts : [text];
+  };
+  
+  // Función para convertir referencias a tesis en enlaces
+  const processTesisLinks = (text: string, tesisMap: Map<string, { id: string; title: string; citation: string }>) => {
+    if (tesisMap.size === 0) return [text];
+    
+    const parts: (string | JSX.Element)[] = [];
+    const matches: Array<{ index: number; length: number; tesis: { id: string; title: string; citation: string }; text: string }> = [];
+    
+    // Buscar todas las coincidencias de títulos
+    tesisMap.forEach((tesis) => {
+      // Escapar caracteres especiales para regex
+      const escapedTitle = tesis.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const titleRegex = new RegExp(escapedTitle, 'gi');
+      let match;
+      
+      while ((match = titleRegex.exec(text)) !== null) {
+        matches.push({
+          index: match.index,
+          length: match[0].length,
+          tesis: tesis,
+          text: match[0]
+        });
+      }
+    });
+    
+    // Ordenar matches por índice
+    matches.sort((a, b) => a.index - b.index);
+    
+    // Filtrar matches que se solapan (mantener el primero)
+    const filteredMatches: typeof matches = [];
+    let lastEnd = 0;
+    matches.forEach(match => {
+      if (match.index >= lastEnd) {
+        filteredMatches.push(match);
+        lastEnd = match.index + match.length;
+      }
+    });
+    
+    // Construir el resultado
+    let lastIndex = 0;
+    filteredMatches.forEach((match, idx) => {
+      // Agregar texto antes del enlace
+      if (match.index > lastIndex) {
+        parts.push(text.substring(lastIndex, match.index));
+      }
+      
+      // Agregar enlace
+      parts.push(
+        <Link
+          key={`link-${match.tesis.id}-${match.index}-${idx}`}
+          href={`/tesis/${match.tesis.id}`}
+          className="text-[#8a7a6a] hover:text-[#6a5a4a] underline decoration-[#d4c5b0] hover:decoration-[#8a7a6a] transition-colors font-semibold"
+        >
+          {match.text}
+        </Link>
+      );
+      
+      lastIndex = match.index + match.length;
+    });
+    
+    // Agregar texto restante
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex));
+    }
+    
+    return parts.length > 0 ? parts : [text];
+  };
+  
+  return (
+    <div className="formatted-answer">
+      {formatText(text)}
+    </div>
+  );
+}
+
 const EXAMPLE_QUESTIONS = [
   "¿Qué es el amparo directo?",
   "¿Cuándo procede la suspensión en juicio de amparo?",
@@ -132,34 +333,34 @@ export default function Ask() {
   const showExamples = !hasResult && !mutation.isPending && !mutation.isError;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#f7f3e9]">
       {/* Main Content */}
-      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 lg:py-12">
-        <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8">
+      <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12 lg:py-16">
+        <div className="max-w-4xl mx-auto space-y-8 sm:space-y-10">
           {/* Title and Instructions */}
-          <div className="space-y-3 sm:space-y-4 animate-fade-up" style={{ animationDelay: '0.1s' }}>
-            <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">
+          <div className="space-y-4 sm:space-y-5 animate-fade-up" style={{ animationDelay: '0.1s' }}>
+            <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-semibold text-[#2c2416] leading-tight">
               Búsqueda
             </h1>
-            <div className="space-y-2 sm:space-y-3 text-muted-foreground font-body">
-              <p className="text-sm sm:text-base">
+            <div className="space-y-3 sm:space-y-4 text-[#4a4a4a] font-serif">
+              <p className="text-base sm:text-lg leading-relaxed">
                 Realiza consultas jurídicas y recibe respuestas fundamentadas con jurisprudencia mexicana verificada.
               </p>
-              <p className="text-xs sm:text-sm">
-                Esta herramienta utiliza <strong className="text-foreground">Inteligencia Artificial (AI)</strong> y tecnología <strong className="text-foreground">RAG (Retrieval-Augmented Generation)</strong> para buscar y analizar automáticamente miles de tesis y precedentes, proporcionándote respuestas precisas y fundamentadas.
+              <p className="text-sm sm:text-base leading-relaxed">
+                Esta herramienta utiliza <strong className="text-[#2c2416] font-semibold">Inteligencia Artificial (AI)</strong> y tecnología <strong className="text-[#2c2416] font-semibold">RAG (Retrieval-Augmented Generation)</strong> para buscar y analizar automáticamente miles de tesis y precedentes, proporcionándote respuestas precisas y fundamentadas.
               </p>
-              <p className="text-xs sm:text-sm">
+              <p className="text-sm sm:text-base leading-relaxed">
                 Escribe tu pregunta jurídica en lenguaje natural. Sé específico para obtener mejores resultados.
               </p>
             </div>
           </div>
 
           {/* Search Form */}
-          <Card className="border-border shadow-lg animate-fade-up" style={{ animationDelay: '0.2s' }}>
-            <CardContent className="p-4 sm:p-6 lg:p-8">
-              <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-                <div className="space-y-2">
-                  <label htmlFor="question-input" className="text-sm font-semibold text-foreground">
+          <Card className="border-[#d4c5b0] bg-[#fefcf8] shadow-sm animate-fade-up" style={{ animationDelay: '0.2s' }}>
+            <CardContent className="p-6 sm:p-8 lg:p-10">
+              <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
+                <div className="space-y-3">
+                  <label htmlFor="question-input" className="text-base sm:text-lg font-serif font-semibold text-[#2c2416]">
                     Tu pregunta jurídica
                   </label>
                   <Textarea
@@ -167,13 +368,13 @@ export default function Ask() {
                     value={question}
                     onChange={(e) => setQuestion(e.target.value)}
                     placeholder="Ejemplo: ¿Cuándo procede el amparo directo? ¿Qué requisitos debe cumplir?"
-                    className="min-h-[120px] sm:min-h-[140px] resize-none text-sm sm:text-base border-border focus:border-primary"
+                    className="min-h-[140px] sm:min-h-[160px] resize-none text-base sm:text-lg font-serif leading-relaxed border-[#d4c5b0] bg-[#fefcf8] text-[#2c2416] placeholder:text-[#8a7a6a] focus:border-[#8a7a6a] focus:ring-0 focus-visible:ring-0"
                   />
                 </div>
                 <Button
                   type="submit"
                   size="lg"
-                  className="w-full gap-2 text-sm sm:text-base"
+                  className="w-full gap-2 text-base sm:text-lg font-serif bg-[#8a7a6a] hover:bg-[#7a6a5a] text-[#fefcf8] border-[#7a6a5a] shadow-sm"
                   disabled={mutation.isPending || question.trim().length < 10}
                 >
                   {mutation.isPending ? (
@@ -193,17 +394,17 @@ export default function Ask() {
 
               {/* Example Questions - Solo mostrar si NO hay resultado */}
               {showExamples && (
-                <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-border animate-fade-up" style={{ animationDelay: '0.5s' }}>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-3 sm:mb-4">
+                <div className="mt-8 sm:mt-10 pt-6 sm:pt-8 border-t border-[#d4c5b0] animate-fade-up" style={{ animationDelay: '0.5s' }}>
+                  <p className="text-sm sm:text-base text-[#8a7a6a] uppercase tracking-wider font-serif font-semibold mb-4 sm:mb-5">
                     Ejemplos de preguntas
                   </p>
-                  <div className="grid gap-2 sm:gap-3">
+                  <div className="grid gap-3 sm:gap-4">
                     {EXAMPLE_QUESTIONS.map((example, index) => (
                       <button
                         key={index}
                         type="button"
                         onClick={() => handleExampleClick(example)}
-                        className="w-full text-left p-3 sm:p-4 rounded-lg border border-border bg-card hover:bg-accent hover:border-primary/30 transition-all text-xs sm:text-sm font-body"
+                        className="w-full text-left p-4 sm:p-5 rounded-lg border border-[#d4c5b0] bg-[#fefcf8] hover:bg-[#f7f3e9] hover:border-[#c4b5a0] transition-all text-sm sm:text-base font-serif text-[#2c2416] leading-relaxed"
                       >
                         {example}
                       </button>
@@ -216,13 +417,13 @@ export default function Ask() {
 
           {/* Results */}
           {mutation.isError && (
-            <Card className="border-destructive shadow-lg animate-fade-up" style={{ animationDelay: '0.4s' }}>
-              <CardContent className="p-6">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
+            <Card className="border-[#d4c5b0] bg-[#fefcf8] shadow-sm animate-fade-up" style={{ animationDelay: '0.4s' }}>
+              <CardContent className="p-6 sm:p-8">
+                <div className="flex items-start gap-4">
+                  <AlertTriangle className="h-5 w-5 text-[#8a6a5a] mt-0.5 shrink-0" />
                   <div>
-                    <h3 className="font-semibold text-destructive mb-1">Error al procesar</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <h3 className="font-semibold text-[#6a4a3a] mb-2 font-serif text-lg">Error al procesar</h3>
+                    <p className="text-base text-[#8a7a6a] font-serif leading-relaxed">
                       No se pudo generar la respuesta. Verifica tu conexión e intenta de nuevo.
                     </p>
                   </div>
@@ -232,13 +433,13 @@ export default function Ask() {
           )}
 
           {hasResult && (
-            <div className="space-y-4 sm:space-y-6">
+            <div className="space-y-6 sm:space-y-8">
               {/* Answer */}
-              <Card className="border-border shadow-lg animate-fade-up" style={{ animationDelay: '0.1s' }}>
-                <CardHeader className="p-4 sm:p-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-                    <CardTitle className="flex items-center gap-2 text-foreground text-lg sm:text-xl">
-                      <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+              <Card className="border-[#d4c5b0] bg-[#fefcf8] shadow-sm animate-fade-up" style={{ animationDelay: '0.1s' }}>
+                <CardHeader className="p-6 sm:p-8 pb-4 sm:pb-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6">
+                    <CardTitle className="flex items-center gap-3 text-[#2c2416] text-xl sm:text-2xl font-serif font-semibold">
+                      <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-[#8a7a6a]" />
                       Respuesta
                     </CardTitle>
                     <div className="flex items-center gap-2 flex-wrap">
@@ -250,16 +451,17 @@ export default function Ask() {
                             ? "secondary"
                             : "outline"
                         }
+                        className="bg-[#e8ddd0] text-[#2c2416] border-[#d4c5b0] font-serif"
                       >
                         Confianza: {result.confidence === "high" ? "Alta" : result.confidence === "medium" ? "Media" : "Baja"}
                       </Badge>
                       {result.hasEvidence ? (
-                        <Badge variant="default" className="gap-1">
+                        <Badge variant="default" className="gap-1 bg-[#d4c5b0] text-[#2c2416] border-[#c4b5a0] font-serif">
                           <CheckCircle2 className="h-3 w-3" />
                           Con evidencia
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="gap-1">
+                        <Badge variant="outline" className="gap-1 border-[#d4c5b0] text-[#8a7a6a] font-serif">
                           <AlertTriangle className="h-3 w-3" />
                           Sin evidencia suficiente
                         </Badge>
@@ -267,51 +469,49 @@ export default function Ask() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="p-4 sm:p-6 pt-0">
-                  <div className="prose prose-sm max-w-none dark:prose-invert">
-                    <p className="text-sm sm:text-base text-foreground leading-relaxed whitespace-pre-wrap font-body">
-                      {result.answer}
-                    </p>
+                <CardContent className="p-6 sm:p-8 pt-0">
+                  <div className="prose prose-lg max-w-none">
+                    <FormattedAnswer text={result.answer} tesisUsed={result.tesisUsed} />
                   </div>
                 </CardContent>
               </Card>
 
               {/* Tesis Used */}
               {result.tesisUsed.length > 0 && (
-                <Card className="border-border shadow-lg animate-fade-up" style={{ animationDelay: '0.2s' }}>
-                  <CardHeader className="p-4 sm:p-6">
-                    <CardTitle className="flex flex-wrap items-center gap-2 text-foreground text-lg sm:text-xl">
-                      <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                <Card className="border-[#d4c5b0] bg-[#fefcf8] shadow-sm animate-fade-up" style={{ animationDelay: '0.2s' }}>
+                  <CardHeader className="p-6 sm:p-8 pb-4 sm:pb-6">
+                    <CardTitle className="flex flex-wrap items-center gap-3 text-[#2c2416] text-xl sm:text-2xl font-serif font-semibold">
+                      <BookOpen className="h-5 w-5 sm:h-6 sm:w-6 text-[#8a7a6a]" />
                       Tesis que respaldan la respuesta
-                      <Badge variant="secondary" className="text-xs">{result.tesisUsed.length}</Badge>
+                      <Badge variant="secondary" className="text-sm bg-[#e8ddd0] text-[#2c2416] border-[#d4c5b0] font-serif">{result.tesisUsed.length}</Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="p-4 sm:p-6 pt-0">
-                    <div className="space-y-3 sm:space-y-4">
+                  <CardContent className="p-6 sm:p-8 pt-0">
+                    <div className="space-y-5 sm:space-y-6">
                       {result.tesisUsed.map((tesis, index) => (
-                        <Card key={tesis.id} className="border-border bg-card">
-                          <CardContent className="p-4 sm:p-5">
-                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-3">
+                        <Card key={tesis.id} className="border-[#d4c5b0] bg-[#f7f3e9]">
+                          <CardContent className="p-6 sm:p-8">
+                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6 mb-4">
                               <div className="flex-1 min-w-0">
-                                <div className="flex flex-wrap items-center gap-2 mb-2">
-                                  <Badge variant="outline" className="text-xs">
+                                <div className="flex flex-wrap items-center gap-3 mb-3">
+                                  <Badge variant="outline" className="text-sm bg-[#e8ddd0] text-[#2c2416] border-[#d4c5b0] font-serif">
                                     #{index + 1}
                                   </Badge>
-                                  <span className="text-xs text-muted-foreground">
+                                  <span className="text-sm text-[#8a7a6a] font-serif">
                                     Relevancia: {(tesis.relevanceScore * 100).toFixed(1)}%
                                   </span>
                                 </div>
-                                <h4 className="font-semibold text-sm sm:text-base text-foreground mb-2 font-display break-words">
+                                <h4 className="font-semibold text-base sm:text-lg text-[#2c2416] mb-3 font-serif break-words leading-relaxed">
                                   {tesis.title}
                                 </h4>
-                                <p className="text-xs sm:text-sm text-muted-foreground font-body">
+                                <p className="text-sm sm:text-base text-[#6a5a4a] font-serif leading-relaxed">
                                   {tesis.citation}
                                 </p>
                               </div>
                             </div>
-                            <div className="mt-4 pt-4 border-t border-border">
+                            <div className="mt-6 pt-5 border-t border-[#d4c5b0]">
                               <Link href={`/tesis/${tesis.id}`}>
-                                <Button variant="outline" size="sm" className="gap-2">
+                                <Button variant="outline" size="sm" className="gap-2 bg-[#fefcf8] text-[#2c2416] border-[#d4c5b0] hover:bg-[#e8ddd0] font-serif">
                                   <FileText className="h-4 w-4" />
                                   Ver tesis completa
                                 </Button>

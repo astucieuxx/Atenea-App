@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Merriweather:wght@300;400;700&display=swap');
 
 /* LIGHT MODE */
 :root {
@@ -46,7 +46,7 @@
   --chart-4: 35 60% 45%;
   --chart-5: 280 50% 45%;
   --font-sans: 'Inter', 'IBM Plex Sans', sans-serif;
-  --font-serif: 'Playfair Display', 'Merriweather', Georgia, serif;
+  --font-serif: 'Merriweather', 'Playfair Display', Georgia, serif;
   --font-mono: 'IBM Plex Mono', Menlo, monospace;
   --fuerza-alta: 142 55% 35%;
   --fuerza-alta-foreground: 142 55% 15%;
@@ -298,7 +298,7 @@
 @keyframes fadeUp {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
