@@ -40,11 +40,11 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
         elements.push(
           <div key={`divider-${index}`} className="my-8 sm:my-10 relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-[#d4c5b0]"></div>
+              <div className="w-full border-t border-border"></div>
             </div>
             <div className="relative flex justify-center">
-              <div className="bg-[#fefcf8] px-4">
-                <div className="w-2 h-2 rounded-full bg-[#8a7a6a] opacity-40"></div>
+              <div className="bg-card px-4">
+                <div className="w-2 h-2 rounded-full bg-muted-foreground opacity-40"></div>
               </div>
             </div>
           </div>
@@ -68,10 +68,10 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
         const titleText = titleMatch[1];
         elements.push(
           <div key={`title-wrapper-${index}`} className="mb-6 sm:mb-8 mt-8 sm:mt-10 first:mt-0">
-            <h3 className="text-2xl sm:text-3xl font-serif font-bold text-[#2c2416] mb-2 tracking-tight">
+            <h3 className="text-2xl sm:text-3xl font-serif font-bold text-foreground mb-2 tracking-tight">
               {titleText}
             </h3>
-            <div className="w-16 h-0.5 bg-gradient-to-r from-[#8a7a6a] to-transparent mt-3"></div>
+            <div className="w-16 h-0.5 bg-gradient-to-r from-muted-foreground to-transparent mt-3"></div>
           </div>
         );
         lastWasTitle = true;
@@ -84,8 +84,8 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
         // Procesar negritas dentro de la lista
         const processedContent = processBoldAndLinks(content, tesisMap);
         currentSection.push(
-          <div key={`list-${index}`} className="mb-4 sm:mb-5 text-base sm:text-lg text-[#2c2416] font-serif leading-relaxed flex items-start gap-4 pl-2">
-            <span className="text-[#8a7a6a] mt-2 shrink-0 font-bold text-lg">▪</span>
+          <div key={`list-${index}`} className="mb-4 sm:mb-5 text-base sm:text-lg text-foreground font-serif leading-relaxed flex items-start gap-4 pl-2">
+            <span className="text-muted-foreground mt-2 shrink-0 font-bold text-lg">▪</span>
             <span className="flex-1" style={{ lineHeight: '1.9' }}>{processedContent}</span>
           </div>
         );
@@ -99,7 +99,7 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
         // Si viene después de un título, agregar más espacio
         const marginTop = lastWasTitle ? 'mt-4' : '';
         currentSection.push(
-          <p key={`para-${index}`} className={`mb-4 sm:mb-5 text-base sm:text-lg text-[#2c2416] font-serif leading-relaxed ${marginTop}`} style={{ lineHeight: '1.9' }}>
+          <p key={`para-${index}`} className={`mb-4 sm:mb-5 text-base sm:text-lg text-foreground font-serif leading-relaxed ${marginTop}`} style={{ lineHeight: '1.9' }}>
             {processedContent}
           </p>
         );
@@ -140,7 +140,7 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
       
       // Agregar texto en negrita con estilo elegante
       parts.push(
-        <strong key={`bold-${match.index}`} className="font-bold text-[#1a1611] font-serif">
+        <strong key={`bold-${match.index}`} className="font-bold text-foreground font-serif">
           {match[1]}
         </strong>
       );
@@ -207,7 +207,7 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
         <Link
           key={`link-${match.tesis.id}-${match.index}-${idx}`}
           href={`/tesis/${match.tesis.id}`}
-          className="text-[#8a7a6a] hover:text-[#6a5a4a] underline decoration-[#d4c5b0] hover:decoration-[#8a7a6a] transition-colors font-semibold"
+          className="text-primary hover:text-primary/80 underline decoration-muted-foreground/30 hover:decoration-primary/50 transition-colors font-semibold"
         >
           {match.text}
         </Link>
@@ -353,21 +353,21 @@ export default function Ask() {
   const showExamples = !hasResult && !mutation.isPending && !mutation.isError;
 
   return (
-    <div className="min-h-screen bg-[#f7f3e9]">
+    <div className="min-h-screen bg-background">
       {/* Main Content */}
       <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12 lg:py-16">
         <div className="max-w-4xl mx-auto space-y-8 sm:space-y-10">
           {/* Title and Instructions */}
           <div className="space-y-4 sm:space-y-5 animate-fade-up" style={{ animationDelay: '0.1s' }}>
-            <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-semibold text-[#2c2416] leading-tight">
+            <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-semibold text-foreground leading-tight">
               Búsqueda
             </h1>
-            <div className="space-y-3 sm:space-y-4 text-[#4a4a4a] font-serif">
+            <div className="space-y-3 sm:space-y-4 text-muted-foreground font-serif">
               <p className="text-base sm:text-lg leading-relaxed">
                 Realiza consultas jurídicas y recibe respuestas fundamentadas con jurisprudencia mexicana verificada.
               </p>
               <p className="text-sm sm:text-base leading-relaxed">
-                Esta herramienta utiliza <strong className="text-[#2c2416] font-semibold">Inteligencia Artificial (AI)</strong> y tecnología <strong className="text-[#2c2416] font-semibold">RAG (Retrieval-Augmented Generation)</strong> para buscar y analizar automáticamente miles de tesis y precedentes, proporcionándote respuestas precisas y fundamentadas.
+                Esta herramienta utiliza <strong className="text-foreground font-semibold">Inteligencia Artificial (AI)</strong> y tecnología <strong className="text-foreground font-semibold">RAG (Retrieval-Augmented Generation)</strong> para buscar y analizar automáticamente miles de tesis y precedentes, proporcionándote respuestas precisas y fundamentadas.
               </p>
               <p className="text-sm sm:text-base leading-relaxed">
                 Escribe tu pregunta jurídica en lenguaje natural. Sé específico para obtener mejores resultados.
@@ -376,11 +376,11 @@ export default function Ask() {
           </div>
 
           {/* Search Form */}
-          <Card className="border-[#d4c5b0] bg-[#fefcf8] shadow-sm animate-fade-up" style={{ animationDelay: '0.2s' }}>
+          <Card className="border-border bg-card shadow-sm animate-fade-up" style={{ animationDelay: '0.2s' }}>
             <CardContent className="p-6 sm:p-8 lg:p-10">
               <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
                 <div className="space-y-3">
-                  <label htmlFor="question-input" className="text-base sm:text-lg font-serif font-semibold text-[#2c2416]">
+                  <label htmlFor="question-input" className="text-base sm:text-lg font-serif font-semibold text-foreground">
                     Tu pregunta jurídica
                   </label>
                   <Textarea
@@ -388,13 +388,13 @@ export default function Ask() {
                     value={question}
                     onChange={(e) => setQuestion(e.target.value)}
                     placeholder="Ejemplo: ¿Cuándo procede el amparo directo? ¿Qué requisitos debe cumplir?"
-                    className="min-h-[140px] sm:min-h-[160px] resize-none text-base sm:text-lg font-serif leading-relaxed border-[#d4c5b0] bg-[#fefcf8] text-[#2c2416] placeholder:text-[#8a7a6a] focus:border-[#8a7a6a] focus:ring-0 focus-visible:ring-0"
+                    className="min-h-[140px] sm:min-h-[160px] resize-none text-base sm:text-lg font-serif leading-relaxed border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-0 focus-visible:ring-0"
                   />
                 </div>
                 <Button
                   type="submit"
                   size="lg"
-                  className="w-full gap-2 text-base sm:text-lg font-serif bg-[#8a7a6a] hover:bg-[#7a6a5a] text-[#fefcf8] border-[#7a6a5a] shadow-sm"
+                  className="w-full gap-2 text-base sm:text-lg font-serif"
                   disabled={mutation.isPending || question.trim().length < 10}
                 >
                   {mutation.isPending ? (
@@ -414,8 +414,8 @@ export default function Ask() {
 
               {/* Example Questions - Solo mostrar si NO hay resultado */}
               {showExamples && (
-                <div className="mt-8 sm:mt-10 pt-6 sm:pt-8 border-t border-[#d4c5b0] animate-fade-up" style={{ animationDelay: '0.5s' }}>
-                  <p className="text-sm sm:text-base text-[#8a7a6a] uppercase tracking-wider font-serif font-semibold mb-4 sm:mb-5">
+                <div className="mt-8 sm:mt-10 pt-6 sm:pt-8 border-t border-border animate-fade-up" style={{ animationDelay: '0.5s' }}>
+                  <p className="text-sm sm:text-base text-muted-foreground uppercase tracking-wider font-serif font-semibold mb-4 sm:mb-5">
                     Ejemplos de preguntas
                   </p>
                   <div className="grid gap-3 sm:gap-4">
@@ -424,7 +424,7 @@ export default function Ask() {
                         key={index}
                         type="button"
                         onClick={() => handleExampleClick(example)}
-                        className="w-full text-left p-4 sm:p-5 rounded-lg border border-[#d4c5b0] bg-[#fefcf8] hover:bg-[#f7f3e9] hover:border-[#c4b5a0] transition-all text-sm sm:text-base font-serif text-[#2c2416] leading-relaxed"
+                        className="w-full text-left p-4 sm:p-5 rounded-lg border border-border bg-card hover:bg-accent hover:border-accent-border transition-all text-sm sm:text-base font-serif text-foreground leading-relaxed"
                       >
                         {example}
                       </button>
@@ -437,13 +437,13 @@ export default function Ask() {
 
           {/* Results */}
           {mutation.isError && (
-            <Card className="border-[#d4c5b0] bg-[#fefcf8] shadow-sm animate-fade-up" style={{ animationDelay: '0.4s' }}>
+            <Card className="border-border bg-card shadow-sm animate-fade-up" style={{ animationDelay: '0.4s' }}>
               <CardContent className="p-6 sm:p-8">
                 <div className="flex items-start gap-4">
-                  <AlertTriangle className="h-5 w-5 text-[#8a6a5a] mt-0.5 shrink-0" />
+                  <AlertTriangle className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
                   <div>
-                    <h3 className="font-semibold text-[#6a4a3a] mb-2 font-serif text-lg">Error al procesar</h3>
-                    <p className="text-base text-[#8a7a6a] font-serif leading-relaxed">
+                    <h3 className="font-semibold text-foreground mb-2 font-serif text-lg">Error al procesar</h3>
+                    <p className="text-base text-muted-foreground font-serif leading-relaxed">
                       No se pudo generar la respuesta. Verifica tu conexión e intenta de nuevo.
                     </p>
                   </div>
@@ -455,11 +455,11 @@ export default function Ask() {
           {hasResult && (
             <div className="space-y-6 sm:space-y-8">
               {/* Answer */}
-              <Card className="border-[#d4c5b0] bg-[#fefcf8] shadow-sm animate-fade-up" style={{ animationDelay: '0.1s' }}>
+              <Card className="border-border bg-card shadow-sm animate-fade-up" style={{ animationDelay: '0.1s' }}>
                 <CardHeader className="p-6 sm:p-8 pb-4 sm:pb-6">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6">
-                    <CardTitle className="flex items-center gap-3 text-[#2c2416] text-xl sm:text-2xl font-serif font-semibold">
-                      <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-[#8a7a6a]" />
+                    <CardTitle className="flex items-center gap-3 text-foreground text-xl sm:text-2xl font-serif font-semibold">
+                      <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
                       Respuesta
                     </CardTitle>
                     <div className="flex items-center gap-2 flex-wrap">
@@ -471,17 +471,17 @@ export default function Ask() {
                             ? "secondary"
                             : "outline"
                         }
-                        className="bg-[#e8ddd0] text-[#2c2416] border-[#d4c5b0] font-serif"
+                        className="font-serif"
                       >
                         Confianza: {result.confidence === "high" ? "Alta" : result.confidence === "medium" ? "Media" : "Baja"}
                       </Badge>
                       {result.hasEvidence ? (
-                        <Badge variant="default" className="gap-1 bg-[#d4c5b0] text-[#2c2416] border-[#c4b5a0] font-serif">
+                        <Badge variant="default" className="gap-1 font-serif">
                           <CheckCircle2 className="h-3 w-3" />
                           Con evidencia
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="gap-1 border-[#d4c5b0] text-[#8a7a6a] font-serif">
+                        <Badge variant="outline" className="gap-1 font-serif">
                           <AlertTriangle className="h-3 w-3" />
                           Sin evidencia suficiente
                         </Badge>
@@ -498,40 +498,40 @@ export default function Ask() {
 
               {/* Tesis Used */}
               {result.tesisUsed.length > 0 && (
-                <Card className="border-[#d4c5b0] bg-[#fefcf8] shadow-sm animate-fade-up" style={{ animationDelay: '0.2s' }}>
+                <Card className="border-border bg-card shadow-sm animate-fade-up" style={{ animationDelay: '0.2s' }}>
                   <CardHeader className="p-6 sm:p-8 pb-4 sm:pb-6">
-                    <CardTitle className="flex flex-wrap items-center gap-3 text-[#2c2416] text-xl sm:text-2xl font-serif font-semibold">
-                      <BookOpen className="h-5 w-5 sm:h-6 sm:w-6 text-[#8a7a6a]" />
+                    <CardTitle className="flex flex-wrap items-center gap-3 text-foreground text-xl sm:text-2xl font-serif font-semibold">
+                      <BookOpen className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
                       Tesis que respaldan la respuesta
-                      <Badge variant="secondary" className="text-sm bg-[#e8ddd0] text-[#2c2416] border-[#d4c5b0] font-serif">{result.tesisUsed.length}</Badge>
+                      <Badge variant="secondary" className="text-sm font-serif">{result.tesisUsed.length}</Badge>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-6 sm:p-8 pt-0">
                     <div className="space-y-5 sm:space-y-6">
                       {result.tesisUsed.map((tesis, index) => (
-                        <Card key={tesis.id} className="border-[#d4c5b0] bg-[#f7f3e9]">
+                        <Card key={tesis.id} className="border-border bg-secondary/30">
                           <CardContent className="p-6 sm:p-8">
                             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6 mb-4">
                               <div className="flex-1 min-w-0">
                                 <div className="flex flex-wrap items-center gap-3 mb-3">
-                                  <Badge variant="outline" className="text-sm bg-[#e8ddd0] text-[#2c2416] border-[#d4c5b0] font-serif">
+                                  <Badge variant="outline" className="text-sm font-serif">
                                     #{index + 1}
                                   </Badge>
-                                  <span className="text-sm text-[#8a7a6a] font-serif">
+                                  <span className="text-sm text-muted-foreground font-serif">
                                     Relevancia: {(tesis.relevanceScore * 100).toFixed(1)}%
                                   </span>
                                 </div>
-                                <h4 className="font-semibold text-base sm:text-lg text-[#2c2416] mb-3 font-serif break-words leading-relaxed">
+                                <h4 className="font-semibold text-base sm:text-lg text-foreground mb-3 font-serif break-words leading-relaxed">
                                   {tesis.title}
                                 </h4>
-                                <p className="text-sm sm:text-base text-[#6a5a4a] font-serif leading-relaxed">
+                                <p className="text-sm sm:text-base text-muted-foreground font-serif leading-relaxed">
                                   {tesis.citation}
                                 </p>
                               </div>
                             </div>
-                            <div className="mt-6 pt-5 border-t border-[#d4c5b0]">
+                            <div className="mt-6 pt-5 border-t border-border">
                               <Link href={`/tesis/${tesis.id}`}>
-                                <Button variant="outline" size="sm" className="gap-2 bg-[#fefcf8] text-[#2c2416] border-[#d4c5b0] hover:bg-[#e8ddd0] font-serif">
+                                <Button variant="outline" size="sm" className="gap-2 font-serif">
                                   <FileText className="h-4 w-4" />
                                   Ver tesis completa
                                 </Button>
