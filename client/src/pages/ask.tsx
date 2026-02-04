@@ -552,16 +552,6 @@ export default function Ask() {
                                 {tesis.title}
                               </h4>
                               
-                              {/* Metadata de la tesis */}
-                              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground font-serif">
-                                {tesis.citation && (
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="font-medium text-foreground/70">Cita:</span>
-                                    <span>{tesis.citation}</span>
-                                  </div>
-                                )}
-                              </div>
-                              
                               {/* Botón para ver tesis completa */}
                               <div className="mt-4 pt-4 border-t border-border">
                                 <Link href={`/tesis/${tesis.id}`}>
