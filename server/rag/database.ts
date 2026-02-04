@@ -39,13 +39,32 @@ export function getPool(): pg.Pool {
       keepAliveInitialDelayMillis: 10000,
     });
 
-    // Manejo de errores del pool
+    // Manejo de errores del pool - reconectar si es necesario
     pool.on("error", (err) => {
-      console.error("Unexpected error on idle client", err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      // Si el error indica que la conexión se cerró, resetear el pool
+      if (errorMessage.includes("DbHandler exited") || 
+          errorMessage.includes("connection") ||
+          errorMessage.includes("XX000")) {
+        console.warn("⚠️  Error de conexión detectado, el pool se reseteará en el próximo uso");
+        pool = null; // Forzar recreación del pool en el próximo uso
+      } else {
+        console.error("Unexpected error on idle client", err);
+      }
     });
   }
 
   return pool;
+}
+
+// Función para resetear el pool si es necesario
+export function resetPool(): void {
+  if (pool) {
+    pool.end().catch(() => {
+      // Ignorar errores al cerrar
+    });
+    pool = null;
+  }
 }
 
 // ============================================================================
@@ -53,10 +72,15 @@ export function getPool(): pg.Pool {
 // ============================================================================
 
 export async function insertTesis(tesis: Tesis): Promise<void> {
-  const client = await getPool().connect();
+  const maxRetries = 3;
+  let lastError: Error | null = null;
 
-  try {
-    await client.query(
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    let client;
+    try {
+      client = await getPool().connect();
+      
+      await client.query(
       `INSERT INTO tesis (
         id, url, title, abstract, body, body_full, extra_sections,
         instancia, epoca, materias, tesis_numero, tipo, fuente,
@@ -101,9 +125,40 @@ export async function insertTesis(tesis: Tesis): Promise<void> {
         tesis.extracted_at || null,
       ]
     );
-  } finally {
-    client.release();
+      
+      client.release();
+      return; // Éxito, salir
+    } catch (error) {
+      if (client) {
+        try {
+          client.release();
+        } catch {
+          // Ignorar errores al liberar
+        }
+      }
+      
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      lastError = error as Error;
+      
+      // Si es error de conexión, resetear pool y reintentar
+      if ((errorMessage.includes("DbHandler exited") || 
+           errorMessage.includes("connection") ||
+           errorMessage.includes("XX000") ||
+           errorMessage.includes("timeout")) && 
+          attempt < maxRetries) {
+        console.warn(`⚠️  Error de conexión en insertTesis (intento ${attempt}/${maxRetries}), reintentando...`);
+        resetPool(); // Resetear pool para forzar nueva conexión
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000)); // Exponential backoff
+        continue;
+      }
+      
+      // Si no es error de conexión o ya agotamos reintentos, lanzar error
+      throw error;
+    }
   }
+  
+  // Si llegamos aquí, todos los reintentos fallaron
+  throw lastError || new Error("Error desconocido en insertTesis");
 }
 
 // ============================================================================
@@ -115,31 +170,65 @@ export async function insertChunk(
   chunk: TextChunk,
   embedding: number[]
 ): Promise<string> {
-  const client = await getPool().connect();
+  const maxRetries = 3;
+  let lastError: Error | null = null;
 
-  try {
-    const result = await client.query(
-      `INSERT INTO tesis_chunks (
-        tesis_id, chunk_text, chunk_index, chunk_type,
-        embedding, token_count, char_start, char_end
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING id`,
-      [
-        tesisId,
-        chunk.text,
-        chunk.chunkIndex,
-        chunk.chunkType,
-        JSON.stringify(embedding), // pgvector espera el formato correcto
-        chunk.tokenCount,
-        chunk.charStart,
-        chunk.charEnd,
-      ]
-    );
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    let client;
+    try {
+      client = await getPool().connect();
+      
+      const result = await client.query(
+        `INSERT INTO tesis_chunks (
+          tesis_id, chunk_text, chunk_index, chunk_type,
+          embedding, token_count, char_start, char_end
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING id`,
+        [
+          tesisId,
+          chunk.text,
+          chunk.chunkIndex,
+          chunk.chunkType,
+          JSON.stringify(embedding), // pgvector espera el formato correcto
+          chunk.tokenCount,
+          chunk.charStart,
+          chunk.charEnd,
+        ]
+      );
 
-    return result.rows[0].id;
-  } finally {
-    client.release();
+      client.release();
+      return result.rows[0].id;
+    } catch (error) {
+      if (client) {
+        try {
+          client.release();
+        } catch {
+          // Ignorar errores al liberar
+        }
+      }
+      
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      lastError = error as Error;
+      
+      // Si es error de conexión, resetear pool y reintentar
+      if ((errorMessage.includes("DbHandler exited") || 
+           errorMessage.includes("connection") ||
+           errorMessage.includes("XX000") ||
+           errorMessage.includes("timeout")) && 
+          attempt < maxRetries) {
+        console.warn(`⚠️  Error de conexión en insertChunk (intento ${attempt}/${maxRetries}), reintentando...`);
+        resetPool(); // Resetear pool para forzar nueva conexión
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000)); // Exponential backoff
+        continue;
+      }
+      
+      // Si no es error de conexión o ya agotamos reintentos, lanzar error
+      throw error;
+    }
   }
+  
+  // Si llegamos aquí, todos los reintentos fallaron
+  throw lastError || new Error("Error desconocido en insertChunk");
 }
 
 // ============================================================================
@@ -210,18 +299,29 @@ export async function vectorSearch(
       client.release();
       return results;
     } catch (error) {
-      client.release();
+      if (client) {
+        try {
+          client.release();
+        } catch {
+          // Ignorar errores al liberar
+        }
+      }
+      
       lastError = error as Error;
       const errorMessage = error instanceof Error ? error.message : String(error);
       
-      // Si es error de conexión/autenticación, reintentar
-      if ((errorMessage.includes("connection") || 
+      // Si es error de conexión/autenticación, resetear pool y reintentar
+      if ((errorMessage.includes("DbHandler exited") || 
+           errorMessage.includes("connection") ||
+           errorMessage.includes("XX000") ||
            errorMessage.includes("authentication") ||
            errorMessage.includes("timeout") ||
+           errorMessage.includes("not available") ||
            errorMessage.includes("08006")) && 
           attempt < maxRetries) {
         const waitTime = Math.pow(2, attempt) * 1000; // Exponential backoff: 1s, 2s, 4s
         console.warn(`⚠️ Error de conexión en vectorSearch (intento ${attempt}/${maxRetries}), reintentando en ${waitTime}ms...`);
+        resetPool(); // Resetear pool para forzar nueva conexión
         await new Promise(resolve => setTimeout(resolve, waitTime));
         continue;
       }
@@ -301,18 +401,29 @@ export async function fullTextSearch(
       client.release();
       return results;
     } catch (error) {
-      client.release();
+      if (client) {
+        try {
+          client.release();
+        } catch {
+          // Ignorar errores al liberar
+        }
+      }
+      
       lastError = error as Error;
       const errorMessage = error instanceof Error ? error.message : String(error);
       
-      // Si es error de conexión/autenticación, reintentar
-      if ((errorMessage.includes("connection") || 
+      // Si es error de conexión/autenticación, resetear pool y reintentar
+      if ((errorMessage.includes("DbHandler exited") || 
+           errorMessage.includes("connection") ||
+           errorMessage.includes("XX000") ||
            errorMessage.includes("authentication") ||
            errorMessage.includes("timeout") ||
+           errorMessage.includes("not available") ||
            errorMessage.includes("08006")) && 
           attempt < maxRetries) {
         const waitTime = Math.pow(2, attempt) * 1000; // Exponential backoff: 1s, 2s, 4s
         console.warn(`⚠️ Error de conexión en fullTextSearch (intento ${attempt}/${maxRetries}), reintentando en ${waitTime}ms...`);
+        resetPool(); // Resetear pool para forzar nueva conexión
         await new Promise(resolve => setTimeout(resolve, waitTime));
         continue;
       }
@@ -446,17 +557,51 @@ export async function tesisHasChunks(tesisId: string): Promise<boolean> {
 // ============================================================================
 
 export async function getProcessedTesisIds(): Promise<Set<string>> {
-  const client = await getPool().connect();
+  const maxRetries = 3;
+  let lastError: Error | null = null;
 
-  try {
-    const result = await client.query(
-      `SELECT DISTINCT tesis_id FROM tesis_chunks WHERE embedding IS NOT NULL`
-    );
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    let client;
+    try {
+      client = await getPool().connect();
+      
+      const result = await client.query(
+        `SELECT DISTINCT tesis_id FROM tesis_chunks WHERE embedding IS NOT NULL`
+      );
 
-    return new Set(result.rows.map(row => row.tesis_id));
-  } finally {
-    client.release();
+      client.release();
+      return new Set(result.rows.map(row => row.tesis_id));
+    } catch (error) {
+      if (client) {
+        try {
+          client.release();
+        } catch {
+          // Ignorar errores al liberar
+        }
+      }
+      
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      lastError = error as Error;
+      
+      // Si es error de conexión, resetear pool y reintentar
+      if ((errorMessage.includes("DbHandler exited") || 
+           errorMessage.includes("connection") ||
+           errorMessage.includes("XX000") ||
+           errorMessage.includes("timeout")) && 
+          attempt < maxRetries) {
+        console.warn(`⚠️  Error de conexión en getProcessedTesisIds (intento ${attempt}/${maxRetries}), reintentando...`);
+        resetPool(); // Resetear pool para forzar nueva conexión
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000)); // Exponential backoff
+        continue;
+      }
+      
+      // Si no es error de conexión o ya agotamos reintentos, lanzar error
+      throw error;
+    }
   }
+  
+  // Si llegamos aquí, todos los reintentos fallaron
+  throw lastError || new Error("Error desconocido en getProcessedTesisIds");
 }
 
 // ============================================================================
@@ -464,46 +609,85 @@ export async function getProcessedTesisIds(): Promise<Set<string>> {
 // ============================================================================
 
 export async function getTesisById(tesisId: string): Promise<Tesis | null> {
-  const client = await getPool().connect();
+  const maxRetries = 3;
+  let lastError: Error | null = null;
 
-  try {
-    const result = await client.query(
-      `SELECT * FROM tesis WHERE id = $1`,
-      [tesisId]
-    );
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    let client;
+    try {
+      client = await getPool().connect();
+      
+      const result = await client.query(
+        `SELECT * FROM tesis WHERE id = $1`,
+        [tesisId]
+      );
 
-    if (result.rows.length === 0) {
-      return null;
+      if (result.rows.length === 0) {
+        client.release();
+        return null;
+      }
+
+      const row = result.rows[0];
+      const tesis: Tesis = {
+        id: row.id,
+        url: row.url || "",
+        title: row.title,
+        abstract: row.abstract || "",
+        body: row.body || "",
+        body_full: row.body_full || "",
+        extra_sections: row.extra_sections || "",
+        instancia: row.instancia || "",
+        epoca: row.epoca || "",
+        materias: row.materias || "",
+        tesis_numero: row.tesis_numero || "",
+        tipo: row.tipo || "",
+        fuente: row.fuente || "",
+        localizacion_libro: row.localizacion_libro || "",
+        localizacion_tomo: row.localizacion_tomo || "",
+        localizacion_mes: row.localizacion_mes || "",
+        localizacion_anio: row.localizacion_anio || "",
+        localizacion_pagina: row.localizacion_pagina || "",
+        organo_jurisdiccional: row.organo_jurisdiccional || "",
+        clave: row.clave || "",
+        notas: row.notas || "",
+        formas_integracion: row.formas_integracion || "",
+        fecha_publicacion: row.fecha_publicacion || "",
+        extracted_at: row.extracted_at || "",
+      };
+
+      client.release();
+      return tesis;
+    } catch (error) {
+      if (client) {
+        try {
+          client.release();
+        } catch {
+          // Ignorar errores al liberar
+        }
+      }
+      
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      lastError = error as Error;
+      
+      // Si es error de conexión, resetear pool y reintentar
+      if ((errorMessage.includes("DbHandler exited") || 
+           errorMessage.includes("connection") ||
+           errorMessage.includes("XX000") ||
+           errorMessage.includes("timeout") ||
+           errorMessage.includes("not available") ||
+           errorMessage.includes("Authentication")) && 
+          attempt < maxRetries) {
+        console.warn(`⚠️  Error de conexión en getTesisById (intento ${attempt}/${maxRetries}), reintentando...`);
+        resetPool(); // Resetear pool para forzar nueva conexión
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000)); // Exponential backoff
+        continue;
+      }
+      
+      // Si no es error de conexión o ya agotamos reintentos, lanzar error
+      throw error;
     }
-
-    const row = result.rows[0];
-    return {
-      id: row.id,
-      url: row.url || "",
-      title: row.title,
-      abstract: row.abstract || "",
-      body: row.body || "",
-      body_full: row.body_full || "",
-      extra_sections: row.extra_sections || "",
-      instancia: row.instancia || "",
-      epoca: row.epoca || "",
-      materias: row.materias || "",
-      tesis_numero: row.tesis_numero || "",
-      tipo: row.tipo || "",
-      fuente: row.fuente || "",
-      localizacion_libro: row.localizacion_libro || "",
-      localizacion_tomo: row.localizacion_tomo || "",
-      localizacion_mes: row.localizacion_mes || "",
-      localizacion_anio: row.localizacion_anio || "",
-      localizacion_pagina: row.localizacion_pagina || "",
-      organo_jurisdiccional: row.organo_jurisdiccional || "",
-      clave: row.clave || "",
-      notas: row.notas || "",
-      formas_integracion: row.formas_integracion || "",
-      fecha_publicacion: row.fecha_publicacion || "",
-      extracted_at: row.extracted_at || "",
-    };
-  } finally {
-    client.release();
   }
+  
+  // Si llegamos aquí, todos los reintentos fallaron
+  throw lastError || new Error("Error desconocido en getTesisById");
 }
