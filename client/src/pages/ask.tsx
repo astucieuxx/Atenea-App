@@ -25,6 +25,9 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
   // Crear un mapa de tesis por título para buscar referencias por título
   const tesisMapByTitle = new Map(tesisUsed.map((t, idx) => [t.title.toLowerCase(), { ...t, index: idx + 1 }]));
   
+  // Crear un mapa de tesis por ID para buscar referencias [ID: xxx]
+  const tesisMapById = new Map(tesisUsed.map((t, idx) => [t.id, { ...t, index: idx + 1 }]));
+  
   // Función para procesar el texto y convertirlo en elementos React
   const formatText = (text: string) => {
     const lines = text.split('\n');
