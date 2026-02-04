@@ -49,7 +49,7 @@ export default function HeroSection() {
           </h1>
 
           {/* Subtitle */}
-          <p className="text-base md:text-lg text-primary-foreground/70 max-w-2xl mx-auto mb-8 font-body animate-fade-up" style={{ animationDelay: '0.3s' }}>
+          <p className="text-base md:text-lg text-white max-w-2xl mx-auto mb-8 font-body animate-fade-up" style={{ animationDelay: '0.3s' }}>
             La plataforma de búsqueda inteligente que transforma la manera en que 
             los abogados mexicanos investigan precedentes legales.
           </p>
@@ -59,7 +59,7 @@ export default function HeroSection() {
             <div className="relative group">
               <div className="absolute -inset-1 bg-gradient-silver rounded-2xl opacity-30 blur group-hover:opacity-50 transition-opacity duration-500" />
               <div className="relative flex items-center bg-primary-foreground/10 backdrop-blur-lg border border-primary-foreground/20 rounded-xl p-1.5">
-                <Search className="w-4 h-4 text-primary-foreground/50 ml-3" />
+                <Search className="w-4 h-4 text-white/80 ml-3" />
                 <input 
                   type="text" 
                   placeholder="Buscar jurisprudencias, tesis, precedentes..."
@@ -76,7 +76,7 @@ export default function HeroSection() {
           </div>
 
           {/* Trust Indicators */}
-          <div className="flex flex-wrap justify-center gap-4 text-primary-foreground/50 text-xs font-body mb-4 animate-fade-up" style={{ animationDelay: '0.5s' }}>
+          <div className="flex flex-wrap justify-center gap-4 text-white/80 text-xs font-body mb-4 animate-fade-up" style={{ animationDelay: '0.5s' }}>
             <span className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-silver-light" />
               +500,000 resoluciones

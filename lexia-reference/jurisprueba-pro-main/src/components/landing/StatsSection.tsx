@@ -5,7 +5,7 @@ const stats = [
   { value: "24/7", label: "Disponibilidad" },
 ];
 
-export default function StatsSection() {
+const StatsSection = () => {
   return (
     <section className="py-20 bg-gradient-hero relative overflow-hidden">
       {/* Decorative Elements */}
@@ -21,7 +21,7 @@ export default function StatsSection() {
               <div className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-gradient-silver mb-2">
                 {stat.value}
               </div>
-              <p className="text-white font-body text-sm md:text-base">
+              <p className="text-primary-foreground/70 font-body text-sm md:text-base">
                 {stat.label}
               </p>
             </div>
@@ -30,4 +30,6 @@ export default function StatsSection() {
       </div>
     </section>
   );
-}
+};
+
+export default StatsSection;
