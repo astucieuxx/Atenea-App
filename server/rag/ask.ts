@@ -140,11 +140,11 @@ Explica brevemente el sustento normativo y jurisprudencial.
 
 Separa claramente las fuentes en dos bloques usando subtítulos en negritas:
 
-**Jurisprudencia directamente aplicable**
+**Jurisprudencia Directamente Aplicable**
 
 Solo tesis que sostienen la regla central. Usa formato: [ID: xxx] "Rubro de la tesis"
 
-**Jurisprudencia relacionada (contexto)**
+**Jurisprudencia Relacionada**
 
 Tesis auxiliares o analógicas. No mezclar ambos niveles.
 
@@ -195,7 +195,7 @@ INSTRUCCIONES:
 2. Formato: **TÍTULO DE SECCIÓN**, --- para separadores, - para listas, **texto** para conceptos clave.
 3. Cita tesis con: [ID: xxx] "Rubro". El sistema convertirá [ID: xxx] a [#número].
 4. Sin emojis, hashtags ni símbolos decorativos.
-5. Clasifica en "Jurisprudencia directamente aplicable" y "Jurisprudencia relacionada".
+5. Clasifica en "Jurisprudencia Directamente Aplicable" y "Jurisprudencia Relacionada".
 6. Si faltan tesis, indícalo en la Respuesta Ejecutiva.`;
 
   try {
