@@ -45,7 +45,7 @@ export default function HeroSection() {
 
           {/* Main Heading */}
           <h1 className="font-display text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold text-white leading-normal mb-3 animate-fade-up" style={{ animationDelay: '0.2s' }}>
-            Encuentra Jurisprudencia en Segundos
+            Información Jurídica en Segundos
           </h1>
 
           {/* Subtitle */}

@@ -94,7 +94,7 @@ REGLAS FUNDAMENTALES:
 
 FORMATO OBLIGATORIO DE RESPUESTA:
 
-Usa markdown profesional sin emojis ni hashtags. El formato debe verse elegante y profesional.
+Usa un formato limpio y profesional. Las secciones principales deben usar títulos en negritas con el formato **TÍTULO DE SECCIÓN**. Usa líneas separadoras (---) entre secciones principales. NO uses emojis, hashtags, ni símbolos decorativos.
 
 **RESPUESTA EJECUTIVA**
 
@@ -112,16 +112,16 @@ Ejemplo de enfoque: "Por regla general…, salvo que…, en cuyo caso…"
 
 **REGLAS PRÁCTICAS**
 
-Desglosa la doctrina en reglas operativas usando listas con viñetas.
+Desglosa la doctrina en reglas operativas usando listas con viñetas (guión y espacio: - ).
 
 Incluye solo lo que sirve para decidir:
-- **Fecha relevante**: [especificar]
-- **Plazo aplicable**: [especificar]
-- **Excepciones**: [si las hay]
-- **Límites absolutos**: [si aplica]
-- **Consideraciones importantes**: [riesgos interpretativos o advertencias]
+- Fecha relevante: [especificar]
+- Plazo aplicable: [especificar]
+- Excepciones: [si las hay]
+- Límites absolutos: [si aplica]
+- Consideraciones importantes: [riesgos interpretativos o advertencias]
 
-Usa negritas para los conceptos clave y texto normal para las explicaciones.
+Usa negritas SOLO para conceptos clave dentro del texto (formato: **concepto clave**), no para toda la lista.
 
 ---
 
@@ -138,7 +138,7 @@ Explica brevemente el sustento normativo y jurisprudencial.
 
 **JURISPRUDENCIA**
 
-Separa claramente las fuentes en dos bloques:
+Separa claramente las fuentes en dos bloques usando subtítulos en negritas:
 
 **Jurisprudencia clave (directamente aplicable)**
 
@@ -193,15 +193,18 @@ ${tesisContext}
 INSTRUCCIONES CRÍTICAS:
 1. Responde la pregunta basándote ÚNICAMENTE en las tesis proporcionadas arriba.
 2. Sigue EXACTAMENTE el formato obligatorio sin emojis, sin hashtags, sin números con círculos.
-3. Usa SOLO markdown profesional: **negritas** para títulos de sección, líneas separadoras (---), y listas con viñetas.
+3. Usa SOLO el siguiente formato:
+   - **TÍTULO DE SECCIÓN** para secciones principales (RESPUESTA EJECUTIVA, REGLAS PRÁCTICAS, etc.)
+   - --- (tres guiones) para separar secciones principales
+   - - (guión y espacio) para listas con viñetas
+   - **texto** para conceptos clave dentro de párrafos (NO para títulos de lista)
 4. Cita cada tesis usando el formato: [ID: xxx] "Rubro de la tesis"
-5. NO uses emojis (📍, ⏱️, 🚨, ⭐, 📚, etc.) en ninguna parte de la respuesta.
-6. NO uses hashtags (#) ni números con círculos (1️⃣, 2️⃣, etc.).
-7. Usa títulos en negritas como: **RESPUESTA EJECUTIVA**, **REGLAS PRÁCTICAS**, **FUNDAMENTO JURÍDICO**, etc.
-8. Si las tesis no son suficientes, indícalo en la Respuesta Ejecutiva y explica qué falta.
-9. Clasifica las tesis en "Jurisprudencia clave" y "Jurisprudencia relacionada" usando solo negritas.
+5. NO uses emojis, hashtags, números con círculos, ni símbolos decorativos.
+6. NO uses asteriscos para títulos de lista, solo para títulos de sección y conceptos clave.
+7. Si las tesis no son suficientes, indícalo en la Respuesta Ejecutiva y explica qué falta.
+8. Clasifica las tesis en "Jurisprudencia clave" y "Jurisprudencia relacionada" usando subtítulos en negritas.
 
-IMPORTANTE: El formato debe verse profesional y limpio, como una app legal de alta calidad. Sin emojis, sin símbolos decorativos, solo texto profesional bien estructurado.`;
+IMPORTANTE: El formato debe verse profesional, limpio y formal. El frontend procesará automáticamente las negritas y separadores para crear un diseño elegante. Solo enfócate en el contenido jurídico de calidad.`;
 
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {

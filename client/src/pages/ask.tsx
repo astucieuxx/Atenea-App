@@ -21,6 +21,7 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
     const elements: JSX.Element[] = [];
     let currentSection: JSX.Element[] = [];
     let sectionKey = 0;
+    let lastWasTitle = false;
     
     lines.forEach((line, index) => {
       const trimmedLine = line.trim();
@@ -29,16 +30,26 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
       if (trimmedLine === '---' || trimmedLine.startsWith('---')) {
         if (currentSection.length > 0) {
           elements.push(
-            <div key={`section-${sectionKey++}`} className="mb-6 sm:mb-8">
+            <div key={`section-${sectionKey++}`} className="mb-8 sm:mb-10">
               {currentSection}
             </div>
           );
           currentSection = [];
         }
-        // Agregar línea separadora elegante
+        // Línea separadora elegante con diseño decorativo
         elements.push(
-          <div key={`divider-${index}`} className="my-6 sm:my-8 border-t border-[#d4c5b0]"></div>
+          <div key={`divider-${index}`} className="my-8 sm:my-10 relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-[#d4c5b0]"></div>
+            </div>
+            <div className="relative flex justify-center">
+              <div className="bg-[#fefcf8] px-4">
+                <div className="w-2 h-2 rounded-full bg-[#8a7a6a] opacity-40"></div>
+              </div>
+            </div>
+          </div>
         );
+        lastWasTitle = false;
         return;
       }
       
@@ -47,18 +58,23 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
       if (titleMatch) {
         if (currentSection.length > 0) {
           elements.push(
-            <div key={`section-${sectionKey++}`} className="mb-6 sm:mb-8">
+            <div key={`section-${sectionKey++}`} className="mb-8 sm:mb-10">
               {currentSection}
             </div>
           );
           currentSection = [];
         }
-        // Título sin asteriscos, en negrita
+        // Título elegante con estilo formal
+        const titleText = titleMatch[1];
         elements.push(
-          <h3 key={`title-${index}`} className="text-xl sm:text-2xl font-serif font-bold text-[#2c2416] mb-4 sm:mb-5 mt-6 sm:mt-8 first:mt-0">
-            {titleMatch[1]}
-          </h3>
+          <div key={`title-wrapper-${index}`} className="mb-6 sm:mb-8 mt-8 sm:mt-10 first:mt-0">
+            <h3 className="text-2xl sm:text-3xl font-serif font-bold text-[#2c2416] mb-2 tracking-tight">
+              {titleText}
+            </h3>
+            <div className="w-16 h-0.5 bg-gradient-to-r from-[#8a7a6a] to-transparent mt-3"></div>
+          </div>
         );
+        lastWasTitle = true;
         return;
       }
       
@@ -68,32 +84,36 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
         // Procesar negritas dentro de la lista
         const processedContent = processBoldAndLinks(content, tesisMap);
         currentSection.push(
-          <div key={`list-${index}`} className="mb-3 sm:mb-4 text-base sm:text-lg text-[#2c2416] font-serif leading-relaxed flex items-start gap-3">
-            <span className="text-[#8a7a6a] mt-1.5 shrink-0">•</span>
-            <span className="flex-1" style={{ lineHeight: '1.8' }}>{processedContent}</span>
+          <div key={`list-${index}`} className="mb-4 sm:mb-5 text-base sm:text-lg text-[#2c2416] font-serif leading-relaxed flex items-start gap-4 pl-2">
+            <span className="text-[#8a7a6a] mt-2 shrink-0 font-bold text-lg">▪</span>
+            <span className="flex-1" style={{ lineHeight: '1.9' }}>{processedContent}</span>
           </div>
         );
+        lastWasTitle = false;
         return;
       }
       
       // Párrafo normal
       if (trimmedLine.length > 0) {
         const processedContent = processBoldAndLinks(trimmedLine, tesisMap);
+        // Si viene después de un título, agregar más espacio
+        const marginTop = lastWasTitle ? 'mt-4' : '';
         currentSection.push(
-          <p key={`para-${index}`} className="mb-3 sm:mb-4 text-base sm:text-lg text-[#2c2416] font-serif leading-relaxed" style={{ lineHeight: '1.8' }}>
+          <p key={`para-${index}`} className={`mb-4 sm:mb-5 text-base sm:text-lg text-[#2c2416] font-serif leading-relaxed ${marginTop}`} style={{ lineHeight: '1.9' }}>
             {processedContent}
           </p>
         );
+        lastWasTitle = false;
       } else if (currentSection.length > 0) {
         // Línea vacía - agregar espacio
-        currentSection.push(<div key={`space-${index}`} className="mb-2"></div>);
+        currentSection.push(<div key={`space-${index}`} className="mb-3"></div>);
       }
     });
     
     // Agregar última sección
     if (currentSection.length > 0) {
       elements.push(
-        <div key={`section-${sectionKey++}`} className="mb-6 sm:mb-8">
+        <div key={`section-${sectionKey++}`} className="mb-8 sm:mb-10">
           {currentSection}
         </div>
       );
@@ -118,9 +138,9 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
         parts.push(...processTesisLinks(beforeText, tesisMap));
       }
       
-      // Agregar texto en negrita
+      // Agregar texto en negrita con estilo elegante
       parts.push(
-        <strong key={`bold-${match.index}`} className="font-bold text-[#2c2416]">
+        <strong key={`bold-${match.index}`} className="font-bold text-[#1a1611] font-serif">
           {match[1]}
         </strong>
       );
