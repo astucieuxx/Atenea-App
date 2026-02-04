@@ -11,7 +11,7 @@ import type { AskResponse } from "@shared/schema";
 import { Link } from "wouter";
 
 // Componente para formatear la respuesta con estilo profesional
-function FormattedAnswer({ text, tesisUsed, fontSize = "medium" }: { text: string; tesisUsed: Array<{ id: string; title: string; citation: string }>; fontSize?: "small" | "medium" | "large" }) {
+function FormattedAnswer({ text, tesisUsed, fontSize = "small" }: { text: string; tesisUsed: Array<{ id: string; title: string; citation: string }>; fontSize?: "small" | "medium" | "large" }) {
   // Mapeo de tamaños a clases CSS
   const fontSizeClasses = {
     small: {
@@ -91,7 +91,6 @@ function FormattedAnswer({ text, tesisUsed, fontSize = "medium" }: { text: strin
             <h3 className={`${sizeClasses.title} font-serif font-bold text-foreground mb-2 tracking-tight`}>
               {titleText}
             </h3>
-            <div className="w-16 h-0.5 bg-gradient-to-r from-muted-foreground to-transparent mt-3"></div>
           </div>
         );
         lastWasTitle = true;
@@ -102,7 +101,7 @@ function FormattedAnswer({ text, tesisUsed, fontSize = "medium" }: { text: strin
       if (trimmedLine.startsWith('- ')) {
         const content = trimmedLine.substring(2);
         // Procesar negritas dentro de la lista
-        const processedContent = processBoldAndLinks(content, tesisMap);
+        const processedContent = processBoldAndLinks(content);
         currentSection.push(
           <div key={`list-${index}`} className={`mb-4 sm:mb-5 ${sizeClasses.list} text-foreground font-serif leading-relaxed flex items-start gap-4 pl-2`}>
             <span className="text-muted-foreground mt-2 shrink-0 font-bold text-lg">▪</span>
@@ -115,7 +114,7 @@ function FormattedAnswer({ text, tesisUsed, fontSize = "medium" }: { text: strin
       
       // Párrafo normal
       if (trimmedLine.length > 0) {
-        const processedContent = processBoldAndLinks(trimmedLine, tesisMap);
+        const processedContent = processBoldAndLinks(trimmedLine);
         // Si viene después de un título, agregar más espacio
         const marginTop = lastWasTitle ? 'mt-4' : '';
         currentSection.push(
@@ -143,19 +142,42 @@ function FormattedAnswer({ text, tesisUsed, fontSize = "medium" }: { text: strin
   };
   
   // Función para procesar negritas y enlaces a tesis
-  const processBoldAndLinks = (text: string, tesisMap: Map<string, { id: string; title: string; citation: string }>) => {
+  const processBoldAndLinks = (text: string) => {
     const parts: (string | JSX.Element)[] = [];
     let lastIndex = 0;
+    
+    // Primero procesar referencias [ID: xxx] y convertirlas a [#número]
+    const idRegex = /\[ID:\s*(\d+)\]/gi;
+    let processedText = text;
+    const idMatches: Array<{ id: string; index: number; original: string }> = [];
+    
+    let idMatch;
+    while ((idMatch = idRegex.exec(text)) !== null) {
+      const tesisId = idMatch[1];
+      const tesis = tesisMapById.get(tesisId);
+      if (tesis) {
+        idMatches.push({
+          id: tesisId,
+          index: tesis.index,
+          original: idMatch[0]
+        });
+      }
+    }
+    
+    // Reemplazar [ID: xxx] con [#número]
+    idMatches.forEach(({ id, index, original }) => {
+      processedText = processedText.replace(original, `[#${index}]`);
+    });
     
     // Buscar negritas **texto**
     const boldRegex = /\*\*(.+?)\*\*/g;
     let match;
     
-    while ((match = boldRegex.exec(text)) !== null) {
+    while ((match = boldRegex.exec(processedText)) !== null) {
       // Agregar texto antes de la negrita
       if (match.index > lastIndex) {
-        const beforeText = text.substring(lastIndex, match.index);
-        parts.push(...processTesisLinks(beforeText, tesisMap));
+        const beforeText = processedText.substring(lastIndex, match.index);
+        parts.push(...processTesisLinks(beforeText));
       }
       
       // Agregar texto en negrita con estilo elegante
@@ -169,68 +191,61 @@ function FormattedAnswer({ text, tesisUsed, fontSize = "medium" }: { text: strin
     }
     
     // Agregar texto restante
-    if (lastIndex < text.length) {
-      const remainingText = text.substring(lastIndex);
-      parts.push(...processTesisLinks(remainingText, tesisMap));
+    if (lastIndex < processedText.length) {
+      const remainingText = processedText.substring(lastIndex);
+      parts.push(...processTesisLinks(remainingText));
     }
     
-    return parts.length > 0 ? parts : [text];
+    return parts.length > 0 ? parts : [processedText];
   };
   
-  // Función para convertir referencias a tesis en enlaces
-  const processTesisLinks = (text: string, tesisMap: Map<string, { id: string; title: string; citation: string }>) => {
-    if (tesisMap.size === 0) return [text];
+  // Función para convertir referencias [#número] a enlaces
+  const processTesisLinks = (text: string) => {
+    if (tesisMapById.size === 0) return [text];
     
     const parts: (string | JSX.Element)[] = [];
-    const matches: Array<{ index: number; length: number; tesis: { id: string; title: string; citation: string }; text: string }> = [];
+    // Buscar referencias [#número]
+    const numberRefRegex = /\[#(\d+)\]/g;
+    const matches: Array<{ index: number; length: number; tesisIndex: number; tesisId: string }> = [];
     
-    // Buscar todas las coincidencias de títulos
-    tesisMap.forEach((tesis) => {
-      // Escapar caracteres especiales para regex
-      const escapedTitle = tesis.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const titleRegex = new RegExp(escapedTitle, 'gi');
-      let match;
-      
-      while ((match = titleRegex.exec(text)) !== null) {
+    let match;
+    while ((match = numberRefRegex.exec(text)) !== null) {
+      const tesisIndex = parseInt(match[1], 10);
+      const tesis = Array.from(tesisMapById.values()).find(t => t.index === tesisIndex);
+      if (tesis) {
         matches.push({
           index: match.index,
           length: match[0].length,
-          tesis: tesis,
-          text: match[0]
+          tesisIndex: tesisIndex,
+          tesisId: tesis.id
         });
       }
-    });
-    
-    // Ordenar matches por índice
-    matches.sort((a, b) => a.index - b.index);
-    
-    // Filtrar matches que se solapan (mantener el primero)
-    const filteredMatches: typeof matches = [];
-    let lastEnd = 0;
-    matches.forEach(match => {
-      if (match.index >= lastEnd) {
-        filteredMatches.push(match);
-        lastEnd = match.index + match.length;
-      }
-    });
+    }
     
     // Construir el resultado
     let lastIndex = 0;
-    filteredMatches.forEach((match, idx) => {
+    matches.forEach((match, idx) => {
       // Agregar texto antes del enlace
       if (match.index > lastIndex) {
         parts.push(text.substring(lastIndex, match.index));
       }
       
-      // Agregar enlace
+      // Agregar enlace con scroll suave
       parts.push(
-        <Link
-          key={`link-${match.tesis.id}-${match.index}-${idx}`}
-          href={`/tesis/${match.tesis.id}`}
+        <a
+          key={`link-${match.tesisIndex}-${match.index}-${idx}`}
+          href={`#tesis-${match.tesisIndex}`}
+          onClick={(e) => {
+            e.preventDefault();
+            const element = document.getElementById(`tesis-${match.tesisIndex}`);
+            if (element) {
+              element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }}
           className="text-primary hover:text-primary/80 underline decoration-muted-foreground/30 hover:decoration-primary/50 transition-colors font-semibold"
         >
-          {match.text}
-        </Link>
+          {match.tesisIndex > 0 ? `[#${match.tesisIndex}]` : match.tesisIndex}
+        </a>
       );
       
       lastIndex = match.index + match.length;
@@ -269,7 +284,7 @@ export default function Ask() {
         return saved as "small" | "medium" | "large";
       }
     }
-    return "medium";
+    return "small";
   });
 
   // Guardar preferencia de tamaño de fuente
@@ -574,33 +589,43 @@ export default function Ask() {
                   <CardContent className="p-6 sm:p-8 pt-0">
                     <div className="space-y-5 sm:space-y-6">
                       {result.tesisUsed.map((tesis, index) => (
-                        <Card key={tesis.id} className="border-border bg-secondary/30">
+                        <Card key={tesis.id} id={`tesis-${index + 1}`} className="border-border bg-secondary/30 scroll-mt-20">
                           <CardContent className="p-6 sm:p-8">
-                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6 mb-4">
-                              <div className="flex-1 min-w-0">
-                                <div className="flex flex-wrap items-center gap-3 mb-3">
-                                  <Badge variant="outline" className="text-sm font-serif">
-                                    #{index + 1}
-                                  </Badge>
-                                  <span className="text-sm text-muted-foreground font-serif">
-                                    Relevancia: {(tesis.relevanceScore * 100).toFixed(1)}%
-                                  </span>
-                                </div>
-                                <h4 className="font-semibold text-base sm:text-lg text-foreground mb-3 font-serif break-words leading-relaxed">
-                                  {tesis.title}
-                                </h4>
-                                <p className="text-sm sm:text-base text-muted-foreground font-serif leading-relaxed">
-                                  {tesis.citation}
-                                </p>
+                            <div className="flex flex-col gap-4">
+                              {/* Header con número y relevancia */}
+                              <div className="flex flex-wrap items-center gap-3">
+                                <Badge variant="outline" className="text-sm font-serif font-semibold">
+                                  #{index + 1}
+                                </Badge>
+                                <span className="text-sm text-muted-foreground font-serif">
+                                  Relevancia: {(tesis.relevanceScore * 100).toFixed(1)}%
+                                </span>
                               </div>
-                            </div>
-                            <div className="mt-6 pt-5 border-t border-border">
-                              <Link href={`/tesis/${tesis.id}`}>
-                                <Button variant="outline" size="sm" className="gap-2 font-serif">
-                                  <FileText className="h-4 w-4" />
-                                  Ver tesis completa
-                                </Button>
-                              </Link>
+                              
+                              {/* Rubro de la tesis (solo una vez) */}
+                              <h4 className="font-semibold text-base sm:text-lg text-foreground font-serif break-words leading-relaxed">
+                                {tesis.title}
+                              </h4>
+                              
+                              {/* Metadata de la tesis */}
+                              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground font-serif">
+                                {tesis.citation && (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-medium text-foreground/70">Cita:</span>
+                                    <span>{tesis.citation}</span>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Botón para ver tesis completa */}
+                              <div className="mt-4 pt-4 border-t border-border">
+                                <Link href={`/tesis/${tesis.id}`}>
+                                  <Button variant="outline" size="sm" className="gap-2 font-serif">
+                                    <FileText className="h-4 w-4" />
+                                    Ver tesis completa
+                                  </Button>
+                                </Link>
+                              </div>
                             </div>
                           </CardContent>
                         </Card>
