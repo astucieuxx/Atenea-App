@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowRight, Loader2, FileText, Sparkles, AlertTriangle, CheckCircle2, BookOpen, Search, Type, Minus, Plus } from "lucide-react";
+import { ArrowRight, Loader2, FileText, Sparkles, AlertTriangle, CheckCircle2, BookOpen, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,27 +11,13 @@ import type { AskResponse } from "@shared/schema";
 import { Link } from "wouter";
 
 // Componente para formatear la respuesta con estilo profesional
-function FormattedAnswer({ text, tesisUsed, fontSize = "small" }: { text: string; tesisUsed: Array<{ id: string; title: string; citation: string }>; fontSize?: "small" | "medium" | "large" }) {
-  // Mapeo de tamaños a clases CSS
-  const fontSizeClasses = {
-    small: {
-      title: "text-xl sm:text-2xl",
-      paragraph: "text-sm sm:text-base",
-      list: "text-sm sm:text-base",
-    },
-    medium: {
-      title: "text-2xl sm:text-3xl",
-      paragraph: "text-base sm:text-lg",
-      list: "text-base sm:text-lg",
-    },
-    large: {
-      title: "text-3xl sm:text-4xl",
-      paragraph: "text-lg sm:text-xl",
-      list: "text-lg sm:text-xl",
-    },
+function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{ id: string; title: string; citation: string }> }) {
+  // Tamaño de fuente fijo: pequeño
+  const sizeClasses = {
+    title: "text-xl sm:text-2xl",
+    paragraph: "text-sm sm:text-base",
+    list: "text-sm sm:text-base",
   };
-  
-  const sizeClasses = fontSizeClasses[fontSize];
   // Crear un mapa de tesis por título para buscar referencias
   const tesisMap = new Map(tesisUsed.map(t => [t.title.toLowerCase(), t]));
   
@@ -273,26 +259,8 @@ const EXAMPLE_QUESTIONS = [
 ];
 
 const STORAGE_KEY = "atenea_rag_search";
-const FONT_SIZE_STORAGE_KEY = "atenea_rag_font_size";
 
 export default function Ask() {
-  // Estado para el tamaño de fuente
-  const [fontSize, setFontSize] = useState<"small" | "medium" | "large">(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(FONT_SIZE_STORAGE_KEY);
-      if (saved && (saved === "small" || saved === "medium" || saved === "large")) {
-        return saved as "small" | "medium" | "large";
-      }
-    }
-    return "small";
-  });
-
-  // Guardar preferencia de tamaño de fuente
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem(FONT_SIZE_STORAGE_KEY, fontSize);
-    }
-  }, [fontSize]);
   // Restaurar estado desde localStorage al montar
   const [question, setQuestion] = useState(() => {
     if (typeof window !== "undefined") {
@@ -513,36 +481,6 @@ export default function Ask() {
                       Respuesta
                     </CardTitle>
                     <div className="flex items-center gap-2 flex-wrap">
-                      {/* Controles de tamaño de fuente */}
-                      <div className="flex items-center gap-1 border border-border rounded-lg p-1 bg-secondary/30">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setFontSize("small")}
-                          className={`h-8 px-2 ${fontSize === "small" ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
-                          title="Texto pequeño"
-                        >
-                          <Type className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setFontSize("medium")}
-                          className={`h-8 px-2 ${fontSize === "medium" ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
-                          title="Texto mediano"
-                        >
-                          <Type className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setFontSize("large")}
-                          className={`h-8 px-2 ${fontSize === "large" ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
-                          title="Texto grande"
-                        >
-                          <Type className="h-5 w-5" />
-                        </Button>
-                      </div>
                       <Badge
                         variant={
                           result.confidence === "high"
@@ -571,7 +509,7 @@ export default function Ask() {
                 </CardHeader>
                 <CardContent className="p-6 sm:p-8 pt-0">
                   <div className="prose prose-lg max-w-none">
-                    <FormattedAnswer text={result.answer} tesisUsed={result.tesisUsed} fontSize={fontSize} />
+                    <FormattedAnswer text={result.answer} tesisUsed={result.tesisUsed} />
                   </div>
                 </CardContent>
               </Card>

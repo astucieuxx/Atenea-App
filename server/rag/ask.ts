@@ -66,14 +66,14 @@ async function generateAnswerWithLLM(
     throw new Error("OPENAI_API_KEY environment variable is required");
   }
 
-  // Construir contexto con tesis recuperadas
+  // Construir contexto con tesis recuperadas (optimizado: menos texto por tesis)
   const tesisContext = retrievedTesis
     .map((rt, idx) => {
       const citation = formatTesisCitation(rt.tesis);
       return `TESIS ${idx + 1} (ID: ${rt.tesis.id}):
 Rubro: "${rt.tesis.title}"
 Cita: ${citation}
-Contenido relevante: ${rt.chunkText.slice(0, 500)}...`;
+Contenido relevante: ${rt.chunkText.slice(0, 300)}...`;
     })
     .join("\n\n");
 
@@ -185,26 +185,18 @@ Si las tesis no son suficientes para responder, estructura la respuesta así:
 - Explicación de qué elementos faltan
 - Recomendación práctica sobre cómo proceder`;
 
-  const userPrompt = `Pregunta jurídica: ${question}
+  const userPrompt = `Pregunta: ${question}
 
-Tesis relevantes encontradas:
+Tesis relevantes:
 ${tesisContext}
 
-INSTRUCCIONES CRÍTICAS:
-1. Responde la pregunta basándote ÚNICAMENTE en las tesis proporcionadas arriba.
-2. Sigue EXACTAMENTE el formato obligatorio sin emojis, sin hashtags, sin números con círculos.
-3. Usa SOLO el siguiente formato:
-   - **TÍTULO DE SECCIÓN** para secciones principales (RESPUESTA EJECUTIVA, REGLAS PRÁCTICAS, etc.)
-   - --- (tres guiones) para separar secciones principales
-   - - (guión y espacio) para listas con viñetas
-   - **texto** para conceptos clave dentro de párrafos (NO para títulos de lista)
-4. Cita cada tesis usando SIEMPRE el formato: [ID: xxx] "Rubro de la tesis" donde xxx es el ID de la tesis. El sistema convertirá automáticamente [ID: xxx] a [#número] donde el número corresponde al orden en la lista de tesis al final.
-5. NO uses emojis, hashtags, números con círculos, ni símbolos decorativos.
-6. NO uses asteriscos para títulos de lista, solo para títulos de sección y conceptos clave.
-7. Si las tesis no son suficientes, indícalo en la Respuesta Ejecutiva y explica qué falta.
-8. Clasifica las tesis en "Jurisprudencia directamente aplicable" y "Jurisprudencia relacionada" usando subtítulos en negritas.
-
-IMPORTANTE: El formato debe verse profesional, limpio y formal. El frontend procesará automáticamente las negritas y separadores para crear un diseño elegante. Solo enfócate en el contenido jurídico de calidad.`;
+INSTRUCCIONES:
+1. Responde SOLO con las tesis proporcionadas.
+2. Formato: **TÍTULO DE SECCIÓN**, --- para separadores, - para listas, **texto** para conceptos clave.
+3. Cita tesis con: [ID: xxx] "Rubro". El sistema convertirá [ID: xxx] a [#número].
+4. Sin emojis, hashtags ni símbolos decorativos.
+5. Clasifica en "Jurisprudencia directamente aplicable" y "Jurisprudencia relacionada".
+6. Si faltan tesis, indícalo en la Respuesta Ejecutiva.`;
 
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -220,7 +212,7 @@ IMPORTANTE: El formato debe verse profesional, limpio y formal. El frontend proc
           { role: "user", content: userPrompt },
         ],
         temperature: 0.2, // Muy bajo para respuestas más deterministas y profesionales
-        max_tokens: 2000, // Aumentado para respuestas más completas
+        max_tokens: 1200, // Optimizado para respuestas más rápidas sin sacrificar calidad
       }),
     });
 
