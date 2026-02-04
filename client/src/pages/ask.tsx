@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowRight, Loader2, FileText, Sparkles, AlertTriangle, CheckCircle2, BookOpen, Search } from "lucide-react";
+import { ArrowRight, Loader2, FileText, Sparkles, AlertTriangle, CheckCircle2, BookOpen, Search, Type, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +11,27 @@ import type { AskResponse } from "@shared/schema";
 import { Link } from "wouter";
 
 // Componente para formatear la respuesta con estilo profesional
-function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{ id: string; title: string; citation: string }> }) {
+function FormattedAnswer({ text, tesisUsed, fontSize = "medium" }: { text: string; tesisUsed: Array<{ id: string; title: string; citation: string }>; fontSize?: "small" | "medium" | "large" }) {
+  // Mapeo de tamaños a clases CSS
+  const fontSizeClasses = {
+    small: {
+      title: "text-xl sm:text-2xl",
+      paragraph: "text-sm sm:text-base",
+      list: "text-sm sm:text-base",
+    },
+    medium: {
+      title: "text-2xl sm:text-3xl",
+      paragraph: "text-base sm:text-lg",
+      list: "text-base sm:text-lg",
+    },
+    large: {
+      title: "text-3xl sm:text-4xl",
+      paragraph: "text-lg sm:text-xl",
+      list: "text-lg sm:text-xl",
+    },
+  };
+  
+  const sizeClasses = fontSizeClasses[fontSize];
   // Crear un mapa de tesis por título para buscar referencias
   const tesisMap = new Map(tesisUsed.map(t => [t.title.toLowerCase(), t]));
   
@@ -68,7 +88,7 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
         const titleText = titleMatch[1];
         elements.push(
           <div key={`title-wrapper-${index}`} className="mb-6 sm:mb-8 mt-8 sm:mt-10 first:mt-0">
-            <h3 className="text-2xl sm:text-3xl font-serif font-bold text-foreground mb-2 tracking-tight">
+            <h3 className={`${sizeClasses.title} font-serif font-bold text-foreground mb-2 tracking-tight`}>
               {titleText}
             </h3>
             <div className="w-16 h-0.5 bg-gradient-to-r from-muted-foreground to-transparent mt-3"></div>
@@ -84,7 +104,7 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
         // Procesar negritas dentro de la lista
         const processedContent = processBoldAndLinks(content, tesisMap);
         currentSection.push(
-          <div key={`list-${index}`} className="mb-4 sm:mb-5 text-base sm:text-lg text-foreground font-serif leading-relaxed flex items-start gap-4 pl-2">
+          <div key={`list-${index}`} className={`mb-4 sm:mb-5 ${sizeClasses.list} text-foreground font-serif leading-relaxed flex items-start gap-4 pl-2`}>
             <span className="text-muted-foreground mt-2 shrink-0 font-bold text-lg">▪</span>
             <span className="flex-1" style={{ lineHeight: '1.9' }}>{processedContent}</span>
           </div>
@@ -99,7 +119,7 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
         // Si viene después de un título, agregar más espacio
         const marginTop = lastWasTitle ? 'mt-4' : '';
         currentSection.push(
-          <p key={`para-${index}`} className={`mb-4 sm:mb-5 text-base sm:text-lg text-foreground font-serif leading-relaxed ${marginTop}`} style={{ lineHeight: '1.9' }}>
+          <p key={`para-${index}`} className={`mb-4 sm:mb-5 ${sizeClasses.paragraph} text-foreground font-serif leading-relaxed ${marginTop}`} style={{ lineHeight: '1.9' }}>
             {processedContent}
           </p>
         );
@@ -238,8 +258,26 @@ const EXAMPLE_QUESTIONS = [
 ];
 
 const STORAGE_KEY = "atenea_rag_search";
+const FONT_SIZE_STORAGE_KEY = "atenea_rag_font_size";
 
 export default function Ask() {
+  // Estado para el tamaño de fuente
+  const [fontSize, setFontSize] = useState<"small" | "medium" | "large">(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(FONT_SIZE_STORAGE_KEY);
+      if (saved && (saved === "small" || saved === "medium" || saved === "large")) {
+        return saved as "small" | "medium" | "large";
+      }
+    }
+    return "medium";
+  });
+
+  // Guardar preferencia de tamaño de fuente
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(FONT_SIZE_STORAGE_KEY, fontSize);
+    }
+  }, [fontSize]);
   // Restaurar estado desde localStorage al montar
   const [question, setQuestion] = useState(() => {
     if (typeof window !== "undefined") {
@@ -363,9 +401,6 @@ export default function Ask() {
               Búsqueda
             </h1>
             <div className="space-y-3 sm:space-y-4 text-muted-foreground font-serif">
-              <p className="text-base sm:text-lg leading-relaxed">
-                Realiza consultas jurídicas y recibe respuestas fundamentadas con jurisprudencia mexicana verificada.
-              </p>
               <p className="text-sm sm:text-base leading-relaxed">
                 Esta herramienta utiliza <strong className="text-foreground font-semibold">Inteligencia Artificial (AI)</strong> y tecnología <strong className="text-foreground font-semibold">RAG (Retrieval-Augmented Generation)</strong> para buscar y analizar automáticamente miles de tesis y precedentes, proporcionándote respuestas precisas y fundamentadas.
               </p>
@@ -463,6 +498,36 @@ export default function Ask() {
                       Respuesta
                     </CardTitle>
                     <div className="flex items-center gap-2 flex-wrap">
+                      {/* Controles de tamaño de fuente */}
+                      <div className="flex items-center gap-1 border border-border rounded-lg p-1 bg-secondary/30">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setFontSize("small")}
+                          className={`h-8 px-2 ${fontSize === "small" ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
+                          title="Texto pequeño"
+                        >
+                          <Type className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setFontSize("medium")}
+                          className={`h-8 px-2 ${fontSize === "medium" ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
+                          title="Texto mediano"
+                        >
+                          <Type className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setFontSize("large")}
+                          className={`h-8 px-2 ${fontSize === "large" ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
+                          title="Texto grande"
+                        >
+                          <Type className="h-5 w-5" />
+                        </Button>
+                      </div>
                       <Badge
                         variant={
                           result.confidence === "high"
@@ -491,7 +556,7 @@ export default function Ask() {
                 </CardHeader>
                 <CardContent className="p-6 sm:p-8 pt-0">
                   <div className="prose prose-lg max-w-none">
-                    <FormattedAnswer text={result.answer} tesisUsed={result.tesisUsed} />
+                    <FormattedAnswer text={result.answer} tesisUsed={result.tesisUsed} fontSize={fontSize} />
                   </div>
                 </CardContent>
               </Card>
