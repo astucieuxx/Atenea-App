@@ -301,6 +301,9 @@ export default function Ask() {
     return null;
   });
   
+  // Estado para controlar si ya se ejecutó la búsqueda automática
+  const [autoSearchExecuted, setAutoSearchExecuted] = useState(false);
+  
   const { toast } = useToast();
 
   const mutation = useMutation({
@@ -329,6 +332,34 @@ export default function Ask() {
     },
   });
 
+  // Ejecutar búsqueda automática si hay una pregunta nueva desde la landing page
+  useEffect(() => {
+    // Solo ejecutar si hay una pregunta válida, no se ha ejecutado antes, y no hay resultado guardado
+    if (question.trim().length >= 10 && !autoSearchExecuted && !savedResult && !mutation.isPending && !mutation.data) {
+      // Verificar si la pregunta es nueva (no tiene resultado guardado)
+      const saved = localStorage.getItem(STORAGE_KEY);
+      let isNewQuestion = true;
+      
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          // Si la pregunta coincide con la guardada y hay resultado, no ejecutar
+          if (parsed.question && parsed.question.trim() === question.trim() && parsed.result) {
+            isNewQuestion = false;
+          }
+        } catch {
+          // Ignorar errores
+        }
+      }
+      
+      // Si es una pregunta nueva, ejecutar búsqueda automáticamente
+      if (isNewQuestion) {
+        setAutoSearchExecuted(true);
+        mutation.mutate({ question: question.trim() });
+      }
+    }
+  }, [question, autoSearchExecuted, savedResult, mutation.isPending, mutation.data]);
+
   // Limpiar resultado guardado si la pregunta cambia y no coincide con la guardada
   useEffect(() => {
     if (question.trim() && savedResult) {
@@ -339,6 +370,7 @@ export default function Ask() {
           // Si la pregunta actual no coincide con la guardada, limpiar resultado
           if (parsed.question && parsed.question.trim() !== question.trim()) {
             setSavedResult(null);
+            setAutoSearchExecuted(false); // Permitir nueva búsqueda automática
           }
         } catch {
           // Ignorar errores
@@ -346,6 +378,7 @@ export default function Ask() {
       } else {
         // Si no hay datos guardados, limpiar resultado
         setSavedResult(null);
+        setAutoSearchExecuted(false);
       }
     } else if (!question.trim() && savedResult) {
       // Si la pregunta está vacía, mantener el resultado (puede ser que el usuario solo esté editando)

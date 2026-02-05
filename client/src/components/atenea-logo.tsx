@@ -1032,6 +1032,9 @@ function LogoOwl5({ size = 40 }: { size: number }) {
 
 // Variante ARROW1: A estilizada doble capa (estilo imagen - navy/silver) - PROFESIONAL
 function LogoArrow1({ size = 40 }: { size: number }) {
+  // Color explícito para debug - debería verse en cualquier fondo
+  const logoColor = '#1a1a1a'; // Negro sólido para máximo contraste
+  
   return (
     <svg
       width={size}
@@ -1046,22 +1049,27 @@ function LogoArrow1({ size = 40 }: { size: number }) {
         opacity: '1 !important',
         zIndex: '1000 !important',
         position: 'relative',
-        minWidth: `${size}px`,
-        minHeight: `${size}px`
+        width: `${size}px !important`,
+        height: `${size}px !important`,
+        minWidth: `${size}px !important`,
+        minHeight: `${size}px !important`,
+        color: logoColor,
+        fill: logoColor
       }}
     >
-      {/* Capa exterior (silver/gold) - más sólida y profesional */}
+      {/* Capa exterior (silver/gold) - más grande y más visible */}
       <path
         d="M24 4 L12 40 L24 36 L36 40 Z"
-        fill="#1a1a1a"
-        fillOpacity="0.15"
-        style={{ opacity: 1, fill: '#1a1a1a' }}
+        fill={logoColor}
+        fillOpacity="0.6"
+        style={{ fill: logoColor, opacity: 1 }}
       />
-      {/* Capa interior (navy) - más prominente */}
+      {/* Capa interior (navy) - más pequeña y más oscura */}
       <path
         d="M24 8 L16 36 L24 32 L32 36 Z"
-        fill="#1a1a1a"
-        style={{ opacity: 1, fill: '#1a1a1a' }}
+        fill={logoColor}
+        fillOpacity="1"
+        style={{ fill: logoColor, opacity: 1 }}
       />
     </svg>
   );
@@ -1244,7 +1252,11 @@ export function AteneaLogo({
           visibility: 'visible',
           opacity: 1,
           zIndex: 1000,
-          position: 'relative'
+          position: 'relative',
+          width: `${size}px`,
+          height: `${size}px`,
+          minWidth: `${size}px`,
+          minHeight: `${size}px`
         }}
       >
         <LogoComponent size={size} />

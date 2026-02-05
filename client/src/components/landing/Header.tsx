@@ -11,14 +11,31 @@ export default function Header() {
       <div className="container mx-auto px-6">
         <div className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
-          <div className="flex items-center gap-3 relative z-[100]">
-            <div className="w-10 h-10 flex items-center justify-center relative z-[100]">
+          <div className="flex items-center gap-3 relative z-[100]" style={{ zIndex: 100 }}>
+            <div 
+              className="w-10 h-10 flex items-center justify-center relative z-[100]"
+              style={{ 
+                zIndex: 100, 
+                position: 'relative',
+                display: 'flex',
+                visibility: 'visible',
+                opacity: 1,
+                width: '2.5rem',
+                height: '2.5rem'
+              }}
+            >
               <AteneaLogo 
                 variant="arrow1" 
                 size={40} 
                 showText={false}
-                className="[&_svg]:w-full [&_svg]:h-full relative z-[100]"
-                style={{ zIndex: 100, position: 'relative' }}
+                className="[&_svg]:w-full [&_svg]:h-full"
+                style={{ 
+                  zIndex: 1000, 
+                  position: 'relative',
+                  display: 'block',
+                  visibility: 'visible',
+                  opacity: 1
+                }}
               />
             </div>
             <span className="font-display text-xl font-semibold text-foreground relative z-[100]">

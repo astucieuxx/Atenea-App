@@ -1,11 +1,30 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Search, ArrowRight } from "lucide-react";
 import { AteneaLogo } from "@/components/atenea-logo";
 import heroBg from "@/assets/hero-bg.jpg";
+import { useState } from "react";
 
 // FORZAR RECARGA - Botón Ver Demostración ELIMINADO - 2024
 export default function HeroSection() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [, setLocation] = useLocation();
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim().length >= 3) {
+      // Guardar la query en localStorage para que /ask la lea
+      if (typeof window !== "undefined") {
+        localStorage.setItem("atenea_rag_search", JSON.stringify({
+          question: searchQuery.trim(),
+          timestamp: Date.now()
+        }));
+      }
+      // Redirigir a /ask
+      setLocation("/ask");
+    }
+  };
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
       {/* Background Image */}
@@ -57,23 +76,29 @@ export default function HeroSection() {
 
           {/* Search Bar */}
           <div className="max-w-2xl mx-auto mb-4 animate-fade-up" style={{ animationDelay: '0.4s' }}>
-            <div className="relative">
+            <form onSubmit={handleSearch} className="relative">
               <div className="relative flex items-center bg-white backdrop-blur-lg border border-white/20 rounded-xl p-1.5" style={{ backgroundColor: '#ffffff' }}>
                 <Search className="w-4 h-4 text-foreground/80 ml-3" style={{ color: '#1a1a1a' }} />
                 <input 
                   type="text" 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Buscar jurisprudencias, tesis, precedentes..."
                   className="flex-1 bg-transparent border-none outline-none px-3 py-1.5 text-foreground placeholder:text-foreground/70 font-body text-sm"
                   style={{ color: '#1a1a1a' }}
                 />
-                <Link href="/ask">
-                  <Button variant="silver" size="sm" className="shrink-0 py-1.5">
-                    Buscar
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </Link>
+                <Button 
+                  type="submit"
+                  variant="silver" 
+                  size="sm" 
+                  className="shrink-0 py-1.5"
+                  disabled={searchQuery.trim().length < 3}
+                >
+                  Buscar
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
               </div>
-            </div>
+            </form>
           </div>
 
           {/* Trust Indicators */}
