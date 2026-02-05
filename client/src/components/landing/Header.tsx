@@ -64,7 +64,7 @@ export default function Header() {
             <Button variant="ghost" size="sm">
               Iniciar Sesión
             </Button>
-            <Button variant="silver" size="default">
+            <Button variant="navy" size="default">
               Prueba Gratis
             </Button>
           </div>
@@ -88,7 +88,7 @@ export default function Header() {
               <a href="#testimonials" className="text-foreground font-medium py-2">Testimonios</a>
               <div className="flex flex-col gap-3 pt-4">
                 <Button variant="outline" className="w-full">Iniciar Sesión</Button>
-                <Button variant="silver" className="w-full">Prueba Gratis</Button>
+                <Button variant="navy" className="w-full">Prueba Gratis</Button>
               </div>
             </nav>
           </div>

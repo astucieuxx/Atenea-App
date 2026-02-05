@@ -121,10 +121,13 @@ export default function HeroSection() {
           <div className="flex justify-center animate-fade-up" style={{ animationDelay: '0.6s' }}>
             <Link href="/ask">
               <Button 
-                variant="silver" 
+                variant="navy" 
                 size="sm" 
                 className="text-sm px-6 py-2"
-                style={{ display: 'block' }}
+                style={{ 
+                  display: 'block',
+                  boxShadow: '0 0 20px rgba(31, 58, 81, 0.4), 0 4px 14px rgba(31, 58, 81, 0.3)'
+                }}
               >
                 Comenzar Prueba Gratuita
               </Button>

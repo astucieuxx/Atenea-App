@@ -446,25 +446,28 @@ export default function Ask() {
                     className="min-h-[140px] sm:min-h-[160px] resize-none text-base sm:text-lg font-serif leading-relaxed border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-0 focus-visible:ring-0"
                   />
                 </div>
-                <Button
-                  type="submit"
-                  size="lg"
-                  className="w-full gap-2 text-base sm:text-lg font-serif"
-                  disabled={mutation.isPending || question.trim().length < 10}
-                >
-                  {mutation.isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Generando respuesta...
-                    </>
-                  ) : (
-                    <>
-                      <Search className="h-4 w-4" />
-                      Buscar y generar respuesta
-                      <ArrowRight className="h-4 w-4" />
-                    </>
-                  )}
-                </Button>
+                <div className="flex justify-end">
+                  <Button
+                    type="submit"
+                    size="default"
+                    variant="navy"
+                    className="gap-2 text-sm font-serif px-6"
+                    disabled={mutation.isPending || question.trim().length < 10}
+                  >
+                    {mutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Generando...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="h-4 w-4" />
+                        Buscar
+                        <ArrowRight className="h-4 w-4" />
+                      </>
+                    )}
+                  </Button>
+                </div>
               </form>
 
               {/* Example Questions - Solo mostrar si NO hay resultado */}
