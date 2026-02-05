@@ -225,6 +225,15 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
+  
+  /* Logo colors - asegurar que use el color correcto */
+  .logo-arrow1 {
+    color: hsl(var(--foreground));
+  }
+  
+  .dark .logo-arrow1 path {
+    fill: hsl(var(--foreground));
+  }
 
   .bg-gradient-hero {
     background: var(--gradient-hero);

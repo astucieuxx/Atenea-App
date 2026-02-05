@@ -35,7 +35,7 @@ const features = [
 
 export default function FeaturesSection() {
   return (
-    <section id="features" className="py-24 lg:py-32 bg-background relative">
+    <section id="features" className="py-24 lg:py-32 bg-background relative" style={{ backgroundColor: '#ffffff' }}>
       {/* Subtle Background Pattern */}
       <div className="absolute inset-0 opacity-50">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-silver/5 rounded-full blur-3xl" />
@@ -47,9 +47,9 @@ export default function FeaturesSection() {
           <span className="inline-block text-silver font-semibold text-sm tracking-wider uppercase mb-4">
             Características
           </span>
-          <h2 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-6">
+          <h2 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-6" style={{ color: '#1a1a1a' }}>
             Tecnología Legal de
-            <span className="text-foreground"> Vanguardia</span>
+            <span style={{ color: '#1a1a1a' }}> Vanguardia</span>
           </h2>
           <p className="text-lg text-muted-foreground font-body">
             Herramientas diseñadas por abogados, para abogados. 
@@ -68,7 +68,7 @@ export default function FeaturesSection() {
               <div className="w-14 h-14 rounded-xl bg-gradient-silver flex items-center justify-center shadow-silver mb-6 group-hover:scale-110 transition-transform duration-300">
                 <feature.icon className="w-7 h-7 text-navy-dark" />
               </div>
-              <h3 className="font-display text-xl font-semibold text-foreground mb-3">
+              <h3 className="font-display text-xl font-semibold text-foreground mb-3" style={{ color: '#1a1a1a' }}>
                 {feature.title}
               </h3>
               <p className="text-muted-foreground font-body leading-relaxed">

@@ -4,6 +4,7 @@ import { Search, ArrowRight } from "lucide-react";
 import { AteneaLogo } from "@/components/atenea-logo";
 import heroBg from "@/assets/hero-bg.jpg";
 
+// FORZAR RECARGA - Botón Ver Demostración ELIMINADO - 2024
 export default function HeroSection() {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
@@ -56,14 +57,14 @@ export default function HeroSection() {
 
           {/* Search Bar */}
           <div className="max-w-2xl mx-auto mb-4 animate-fade-up" style={{ animationDelay: '0.4s' }}>
-            <div className="relative group">
-              <div className="absolute -inset-1 bg-gradient-silver rounded-2xl opacity-30 blur group-hover:opacity-50 transition-opacity duration-500" />
-              <div className="relative flex items-center bg-primary-foreground/10 backdrop-blur-lg border border-primary-foreground/20 rounded-xl p-1.5">
-                <Search className="w-4 h-4 text-white/80 ml-3" />
+            <div className="relative">
+              <div className="relative flex items-center bg-white backdrop-blur-lg border border-white/20 rounded-xl p-1.5" style={{ backgroundColor: '#ffffff' }}>
+                <Search className="w-4 h-4 text-foreground/80 ml-3" style={{ color: '#1a1a1a' }} />
                 <input 
                   type="text" 
                   placeholder="Buscar jurisprudencias, tesis, precedentes..."
-                  className="flex-1 bg-transparent border-none outline-none px-3 py-1.5 text-primary-foreground placeholder:text-primary-foreground/70 font-body text-sm"
+                  className="flex-1 bg-transparent border-none outline-none px-3 py-1.5 text-foreground placeholder:text-foreground/70 font-body text-sm"
+                  style={{ color: '#1a1a1a' }}
                 />
                 <Link href="/ask">
                   <Button variant="silver" size="sm" className="shrink-0 py-1.5">
@@ -91,20 +92,21 @@ export default function HeroSection() {
             </span>
           </div>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-3 justify-center animate-fade-up" style={{ animationDelay: '0.6s' }}>
+          {/* CTA Button - SOLO PRUEBA GRATUITA */}
+          <div className="flex justify-center animate-fade-up" style={{ animationDelay: '0.6s' }}>
             <Link href="/ask">
-              <Button variant="silver" size="sm" className="text-sm py-1.5">
+              <Button 
+                variant="silver" 
+                size="lg" 
+                className="text-base px-8 py-3"
+                style={{ display: 'block' }}
+              >
                 Comenzar Prueba Gratuita
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </Link>
-            <Link href="/">
-              <Button variant="heroOutline" size="sm" className="text-sm py-1.5">
-                Ver Demostración
+                <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
           </div>
+          {/* BOTON VER DEMOSTRACION ELIMINADO - NO EXISTE EN EL CODIGO */}
         </div>
       </div>
     </section>
