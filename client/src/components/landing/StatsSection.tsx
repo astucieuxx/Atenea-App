@@ -24,12 +24,13 @@ export default function StatsSection() {
           {stats.map((stat, index) => (
             <div key={stat.label} className="text-center">
               <div 
-                className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-gradient-silver mb-2"
+                className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-gradient-silver mb-4"
                 style={{
                   background: 'linear-gradient(135deg, hsl(210 25% 85%) 0%, hsl(0 0% 100%) 50%, hsl(210 20% 70%) 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text'
+                  backgroundClip: 'text',
+                  marginBottom: '1.5rem'
                 }}
               >
                 {stat.value}

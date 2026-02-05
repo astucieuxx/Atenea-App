@@ -7,20 +7,21 @@ export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border/50">
+    <header className="fixed top-0 left-0 right-0 z-[100] bg-background/80 backdrop-blur-lg border-b border-border/50">
       <div className="container mx-auto px-6">
         <div className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 flex items-center justify-center">
+          <div className="flex items-center gap-3 relative z-[100]">
+            <div className="w-10 h-10 flex items-center justify-center relative z-[100]">
               <AteneaLogo 
                 variant="arrow1" 
                 size={40} 
                 showText={false}
-                className="[&_svg]:w-full [&_svg]:h-full"
+                className="[&_svg]:w-full [&_svg]:h-full relative z-[100]"
+                style={{ zIndex: 100, position: 'relative' }}
               />
             </div>
-            <span className="font-display text-xl font-semibold text-foreground">
+            <span className="font-display text-xl font-semibold text-foreground relative z-[100]">
               Atenea
             </span>
           </div>

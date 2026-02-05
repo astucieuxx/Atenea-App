@@ -97,12 +97,11 @@ export default function HeroSection() {
             <Link href="/ask">
               <Button 
                 variant="silver" 
-                size="lg" 
-                className="text-base px-8 py-3"
+                size="sm" 
+                className="text-sm px-6 py-2"
                 style={{ display: 'block' }}
               >
                 Comenzar Prueba Gratuita
-                <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
           </div>

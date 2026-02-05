@@ -1040,17 +1040,28 @@ function LogoArrow1({ size = 40 }: { size: number }) {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className="logo-arrow1"
+      style={{ 
+        display: 'block !important',
+        visibility: 'visible !important',
+        opacity: '1 !important',
+        zIndex: '1000 !important',
+        position: 'relative',
+        minWidth: `${size}px`,
+        minHeight: `${size}px`
+      }}
     >
       {/* Capa exterior (silver/gold) - más sólida y profesional */}
       <path
         d="M24 4 L12 40 L24 36 L36 40 Z"
-        fill="hsl(222 47% 11%)"
+        fill="#1a1a1a"
         fillOpacity="0.15"
+        style={{ opacity: 1, fill: '#1a1a1a' }}
       />
       {/* Capa interior (navy) - más prominente */}
       <path
         d="M24 8 L16 36 L24 32 L32 36 Z"
-        fill="hsl(222 47% 11%)"
+        fill="#1a1a1a"
+        style={{ opacity: 1, fill: '#1a1a1a' }}
       />
     </svg>
   );
@@ -1226,7 +1237,16 @@ export function AteneaLogo({
 
   if (!showText) {
     return (
-      <div className={`text-foreground ${className}`}>
+      <div 
+        className={`text-foreground ${className}`}
+        style={{ 
+          display: 'block',
+          visibility: 'visible',
+          opacity: 1,
+          zIndex: 1000,
+          position: 'relative'
+        }}
+      >
         <LogoComponent size={size} />
       </div>
     );
