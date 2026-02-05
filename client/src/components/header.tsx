@@ -2,37 +2,40 @@ import { Link, useLocation } from "wouter";
 import { Moon, Sun, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "./theme-provider";
+import { LanguageToggle } from "./language-toggle";
 import { AteneaLogo } from "./atenea-logo";
 import { useState } from "react";
+import { useLanguage } from "@/contexts/language-context";
 
 export function Header() {
   const [location] = useLocation();
   const { theme, toggleTheme } = useTheme();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { t } = useLanguage();
 
   return (
-    <header className="sticky top-0 z-[100] w-full border-b border-border/50 bg-background/80 backdrop-blur-lg">
+    <header className="sticky top-0 z-[100] w-full border-b border-border/50 bg-background backdrop-blur-lg">
       <div className="container mx-auto px-4 sm:px-6">
         <div className="flex h-14 sm:h-16 lg:h-20 items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 sm:gap-3 relative z-[100]" style={{ zIndex: 100 }}>
             <div 
-              className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center relative z-[100]" 
+              className="w-10 h-10 flex items-center justify-center relative z-[100]" 
               style={{ 
                 zIndex: 100, 
                 position: 'relative',
                 display: 'flex',
                 visibility: 'visible',
                 opacity: 1,
-                width: '2rem',
-                height: '2rem'
+                width: '2.5rem',
+                height: '2.5rem'
               }}
             >
               <AteneaLogo 
                 variant="svg" 
-                size={32}
+                size={40}
                 showText={false}
-                className="[&_img]:w-8 [&_img]:h-8 sm:[&_img]:w-10 sm:[&_img]:h-10"
+                className="[&_img]:w-full [&_img]:h-full"
                 style={{ 
                   zIndex: 1000, 
                   position: 'relative',
@@ -49,6 +52,7 @@ export function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-1">
+            <LanguageToggle />
             <Link href="/">
               <Button
                 variant="ghost"
@@ -57,7 +61,7 @@ export function Header() {
                   location === "/" ? "bg-accent text-accent-foreground" : ""
                 }`}
               >
-                Home
+                {t('nav.home')}
               </Button>
             </Link>
             <Link href="/ask">
@@ -68,7 +72,7 @@ export function Header() {
                   location === "/ask" ? "bg-accent text-accent-foreground" : ""
                 }`}
               >
-                Búsqueda
+                {t('nav.search')}
               </Button>
             </Link>
             <Link href="/historial">
@@ -80,7 +84,7 @@ export function Header() {
                 }`}
                 data-testid="link-mis-casos"
               >
-                Historial
+                {t('nav.history')}
               </Button>
             </Link>
             <Button
@@ -103,7 +107,7 @@ export function Header() {
             variant="ghost"
             size="icon"
             className="md:hidden"
-            aria-label="Menú"
+            aria-label={t('header.menu')}
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
             {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -123,7 +127,7 @@ export function Header() {
                   }`}
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  Home
+                  {t('nav.home')}
                 </Button>
               </Link>
               <Link href="/ask">
@@ -135,7 +139,7 @@ export function Header() {
                   }`}
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  Búsqueda
+                  {t('nav.search')}
                 </Button>
               </Link>
               <Link href="/historial">
@@ -147,27 +151,30 @@ export function Header() {
                   }`}
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  Historial
+                  {t('nav.history')}
                 </Button>
               </Link>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start"
-                onClick={toggleTheme}
-              >
+              <div className="flex items-center gap-2">
+                <LanguageToggle />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex-1 justify-start"
+                  onClick={toggleTheme}
+                >
                 {theme === "light" ? (
                   <>
                     <Moon className="h-4 w-4 mr-2" />
-                    Modo Oscuro
+                    {t('header.darkMode')}
                   </>
                 ) : (
                   <>
                     <Sun className="h-4 w-4 mr-2" />
-                    Modo Claro
+                    {t('header.lightMode')}
                   </>
                 )}
-              </Button>
+                </Button>
+              </div>
             </nav>
           </div>
         )}

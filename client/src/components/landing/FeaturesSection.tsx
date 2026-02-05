@@ -1,4 +1,5 @@
 import { Search, Zap, Shield, Brain, FileText, Clock } from "lucide-react";
+import { useLanguage } from "@/contexts/language-context";
 
 const features = [
   {
@@ -34,6 +35,8 @@ const features = [
 ];
 
 export default function FeaturesSection() {
+  const { t } = useLanguage();
+  
   return (
     <section id="features" className="py-24 lg:py-32 bg-background relative" style={{ backgroundColor: '#ffffff' }}>
       {/* Subtle Background Pattern */}
@@ -45,7 +48,7 @@ export default function FeaturesSection() {
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16 lg:mb-20">
           <span className="inline-block text-silver font-semibold text-sm tracking-wider uppercase mb-4">
-            Características
+            {t('landing.features')}
           </span>
           <h2 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-6" style={{ color: '#1a1a1a' }}>
             Tecnología Legal de

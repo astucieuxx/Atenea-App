@@ -17,7 +17,9 @@
     "rag:ingest": "tsx script/ingest-rag.ts",
     "rag:ingest:single": "tsx script/ingest-rag-single.ts",
     "rag:explore": "tsx script/explore-jsonl.ts",
-    "rag:test": "tsx script/test-rag.ts"
+    "rag:test": "tsx script/test-rag.ts",
+    "maintain:pgvector": "tsx script/maintain-pgvector.ts",
+    "migrate": "tsx script/run-migration.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

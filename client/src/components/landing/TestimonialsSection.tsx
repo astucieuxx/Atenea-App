@@ -1,4 +1,5 @@
 import { Star, Quote } from "lucide-react";
+import { useLanguage } from "@/contexts/language-context";
 
 const testimonials = [
   {
@@ -22,6 +23,8 @@ const testimonials = [
 ];
 
 export default function TestimonialsSection() {
+  const { t } = useLanguage();
+  
   return (
     <section id="testimonials" className="py-24 lg:py-32 bg-background relative overflow-hidden">
       {/* Background */}
@@ -33,7 +36,7 @@ export default function TestimonialsSection() {
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16 lg:mb-20">
           <span className="inline-block text-silver font-semibold text-sm tracking-wider uppercase mb-4">
-            Testimonios
+            {t('landing.testimonials')}
           </span>
           <h2 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-6">
             Lo que Dicen

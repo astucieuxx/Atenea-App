@@ -2,12 +2,15 @@ import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import { AteneaLogo } from "@/components/atenea-logo";
+import { LanguageToggle } from "@/components/language-toggle";
+import { useLanguage } from "@/contexts/language-context";
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { t } = useLanguage();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-[100] bg-background/80 backdrop-blur-lg border-b border-border/50">
+    <header className="fixed top-0 left-0 right-0 z-[100] bg-background backdrop-blur-lg border-b border-border/50">
       <div className="container mx-auto px-6">
         <div className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
@@ -46,26 +49,27 @@ export default function Header() {
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-8">
             <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors font-medium text-sm">
-              Características
+              {t('nav.features')}
             </a>
             <a href="#how-it-works" className="text-muted-foreground hover:text-foreground transition-colors font-medium text-sm">
-              Cómo Funciona
+              {t('nav.howItWorks')}
             </a>
             <a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors font-medium text-sm">
-              Precios
+              {t('nav.pricing')}
             </a>
             <a href="#testimonials" className="text-muted-foreground hover:text-foreground transition-colors font-medium text-sm">
-              Testimonios
+              {t('nav.testimonials')}
             </a>
           </nav>
 
           {/* CTA Buttons */}
           <div className="hidden lg:flex items-center gap-4">
+            <LanguageToggle />
             <Button variant="ghost" size="sm">
-              Iniciar Sesión
+              {t('header.login')}
             </Button>
             <Button variant="navy" size="default">
-              Prueba Gratis
+              {t('header.tryFree')}
             </Button>
           </div>
 
@@ -82,13 +86,16 @@ export default function Header() {
         {isMenuOpen && (
           <div className="lg:hidden py-4 border-t border-border">
             <nav className="flex flex-col gap-4">
-              <a href="#features" className="text-foreground font-medium py-2">Características</a>
-              <a href="#how-it-works" className="text-foreground font-medium py-2">Cómo Funciona</a>
-              <a href="#pricing" className="text-foreground font-medium py-2">Precios</a>
-              <a href="#testimonials" className="text-foreground font-medium py-2">Testimonios</a>
+              <a href="#features" className="text-foreground font-medium py-2">{t('nav.features')}</a>
+              <a href="#how-it-works" className="text-foreground font-medium py-2">{t('nav.howItWorks')}</a>
+              <a href="#pricing" className="text-foreground font-medium py-2">{t('nav.pricing')}</a>
+              <a href="#testimonials" className="text-foreground font-medium py-2">{t('nav.testimonials')}</a>
               <div className="flex flex-col gap-3 pt-4">
-                <Button variant="outline" className="w-full">Iniciar Sesión</Button>
-                <Button variant="navy" className="w-full">Prueba Gratis</Button>
+                <div className="flex items-center gap-2">
+                  <LanguageToggle />
+                </div>
+                <Button variant="outline" className="w-full">{t('header.login')}</Button>
+                <Button variant="navy" className="w-full">{t('header.tryFree')}</Button>
               </div>
             </nav>
           </div>

@@ -149,6 +149,10 @@ export async function registerRoutes(
   // RAG ENDPOINT: /api/ask
   // ============================================================================
   app.post("/api/ask", async (req, res) => {
+    const startTime = Date.now();
+    let responseTimeMs = 0;
+    let response: any = null;
+    
     try {
       const { question } = req.body;
       
@@ -160,10 +164,49 @@ export async function registerRoutes(
 
       // Importar dinámicamente para evitar errores si el módulo no está disponible
       const { askQuestion } = await import("./rag/ask");
-      const response = await askQuestion(question.trim());
+      response = await askQuestion(question.trim());
+      
+      // Calcular tiempo de respuesta
+      responseTimeMs = Date.now() - startTime;
+      
+      // Registrar en CSV
+      try {
+        console.log(`[API /ask] Intentando registrar consulta. Tiempo: ${responseTimeMs}ms`);
+        const { logQuery } = await import("./rag/query-logger");
+        logQuery({
+          question: question.trim(),
+          responseTimeMs,
+          tesisFound: response.tesisUsed?.length || 0,
+          confidence: response.confidence || "low",
+          hasEvidence: response.hasEvidence || false,
+        });
+        console.log(`[API /ask] Registro de consulta completado`);
+      } catch (logError) {
+        // No fallar si hay error al escribir el log
+        console.error("[API /ask] Error logging query:", logError);
+        if (logError instanceof Error) {
+          console.error("[API /ask] Error details:", logError.message, logError.stack);
+        }
+      }
 
       return res.json(response);
     } catch (error) {
+      responseTimeMs = Date.now() - startTime;
+      
+      // Intentar registrar el error también
+      try {
+        const { logQuery } = await import("./rag/query-logger");
+        logQuery({
+          question: req.body?.question || "ERROR: pregunta no disponible",
+          responseTimeMs,
+          tesisFound: 0,
+          confidence: "low",
+          hasEvidence: false,
+        });
+      } catch (logError) {
+        // Ignorar errores de logging
+      }
+      
       console.error("Error in /api/ask:", error);
       return res.status(500).json({ 
         error: "Error al procesar la pregunta",

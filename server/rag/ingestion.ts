@@ -215,6 +215,10 @@ export async function checkIngestionStatus(): Promise<{
   const client = await pool.connect();
 
   try {
+    // Configurar timeout ilimitado para queries largas
+    await client.query("SET statement_timeout = 0");
+    await client.query("SET lock_timeout = 0");
+    
     const result = await client.query(`
       SELECT 
         (SELECT COUNT(*) FROM tesis) AS total_tesis,

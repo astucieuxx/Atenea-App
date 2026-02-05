@@ -4,11 +4,13 @@ import { Search, ArrowRight } from "lucide-react";
 import { AteneaLogo } from "@/components/atenea-logo";
 import heroBg from "@/assets/hero-bg.jpg";
 import { useState } from "react";
+import { useLanguage } from "@/contexts/language-context";
 
 // FORZAR RECARGA - Botón Ver Demostración ELIMINADO - 2024
 export default function HeroSection() {
   const [searchQuery, setSearchQuery] = useState("");
   const [, setLocation] = useLocation();
+  const { t } = useLanguage();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,7 +48,7 @@ export default function HeroSection() {
       <div className="container mx-auto px-6 relative z-10">
         <div className="max-w-4xl mx-auto text-center">
           {/* Logo grande con nombre */}
-          <div className="mb-6 animate-fade-up flex flex-col items-center gap-0">
+          <div className="mb-16 animate-fade-up flex flex-col items-center gap-0">
             <AteneaLogo 
               variant="svg" 
               size={130} 
@@ -56,22 +58,20 @@ export default function HeroSection() {
             <span className="font-display text-xl md:text-2xl lg:text-3xl font-bold text-white -mt-3">
               ATENEA
             </span>
+            {/* Badge */}
+            <p className="text-xs italic text-white/60 mt-2 inline-block">
+              {t('landing.poweredBy')}
+            </p>
           </div>
-
-          {/* Badge */}
-          <p className="text-xs italic text-white/60 mb-16 inline-block" style={{ animationDelay: '0.1s' }}>
-            Potenciado por Inteligencia Artificial
-          </p>
 
           {/* Main Heading */}
           <h1 className="font-display text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-white leading-normal mb-3 animate-fade-up" style={{ animationDelay: '0.2s' }}>
-            Información Jurídica en Segundos
+            {t('landing.mainHeading')}
           </h1>
 
           {/* Subtitle */}
           <p className="text-sm md:text-base text-white max-w-2xl mx-auto mb-8 font-body animate-fade-up" style={{ animationDelay: '0.3s' }}>
-            La plataforma de búsqueda inteligente que transforma la manera en que 
-            los abogados mexicanos investigan precedentes legales.
+            {t('landing.subtitle')}
           </p>
 
           {/* Search Bar */}
@@ -83,7 +83,7 @@ export default function HeroSection() {
                   type="text" 
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Buscar jurisprudencias, tesis, precedentes..."
+                  placeholder={t('landing.searchPlaceholder')}
                   className="flex-1 bg-transparent border-none outline-none px-3 py-1.5 text-foreground placeholder:text-foreground/70 font-body text-sm"
                   style={{ color: '#1a1a1a' }}
                 />
@@ -94,7 +94,7 @@ export default function HeroSection() {
                   className="shrink-0 py-1.5"
                   disabled={searchQuery.trim().length < 3}
                 >
-                  Buscar
+                  {t('landing.searchButton')}
                   <ArrowRight className="w-4 h-4" />
                 </Button>
               </div>
@@ -105,15 +105,15 @@ export default function HeroSection() {
           <div className="flex flex-wrap justify-center gap-4 text-white/80 text-xs font-body mb-4 animate-fade-up" style={{ animationDelay: '0.5s' }}>
             <span className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-silver-light" />
-              +500,000 resoluciones
+              {t('landing.trust.resolutions')}
             </span>
             <span className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-silver-light" />
-              Actualización diaria
+              {t('landing.trust.daily')}
             </span>
             <span className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-silver-light" />
-              99.9% de precisión
+              {t('landing.trust.accuracy')}
             </span>
           </div>
 
@@ -129,7 +129,7 @@ export default function HeroSection() {
                   boxShadow: '0 0 20px rgba(31, 58, 81, 0.4), 0 4px 14px rgba(31, 58, 81, 0.3)'
                 }}
               >
-                Comenzar Prueba Gratuita
+                {t('landing.startFreeTrial')}
               </Button>
             </Link>
           </div>

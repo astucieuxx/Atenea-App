@@ -21,6 +21,7 @@ import { FuerzaBadge } from "@/components/fuerza-badge";
 import { ArgumentModal } from "@/components/argument-modal";
 import { DetailLoadingSkeleton } from "@/components/loading-skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/language-context";
 import type { ScoredTesis } from "@shared/schema";
 
 export default function TesisDetail() {
@@ -31,7 +32,10 @@ export default function TesisDetail() {
   
   const [modalOpen, setModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedArgument, setCopiedArgument] = useState(false);
+  const [copiedCitation, setCopiedCitation] = useState(false);
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const { data: tesis, isLoading, error } = useQuery<ScoredTesis>({
     queryKey: ["/api/tesis", tesisId],
@@ -44,8 +48,8 @@ export default function TesisDetail() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     toast({
-      title: "Copiado",
-      description: "El texto de la tesis ha sido copiado.",
+      title: t('tesis.copied'),
+      description: t('tesis.copyText'),
     });
   };
 
@@ -63,15 +67,15 @@ export default function TesisDetail() {
         <div className="text-center py-16">
           <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-foreground mb-2">
-            Tesis no encontrada
+            {t('tesis.notFound')}
           </h2>
           <p className="text-muted-foreground mb-6">
-            La tesis solicitada no existe o no está disponible.
+            {t('tesis.notFoundDesc')}
           </p>
           <Link href="/ask">
             <Button variant="outline" className="gap-2">
               <ArrowLeft className="h-4 w-4" />
-              Volver
+              {t('tesis.back')}
             </Button>
           </Link>
         </div>
@@ -120,57 +124,35 @@ export default function TesisDetail() {
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
                   data-testid="tab-resumen"
                 >
-                  Resumen Ejecutivo
+                  {t('tesis.tabs.executive')}
                 </TabsTrigger>
                 <TabsTrigger
                   value="texto"
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
                   data-testid="tab-texto"
                 >
-                  Texto Oficial
+                  {t('tesis.tabs.text')}
                 </TabsTrigger>
                 <TabsTrigger
                   value="uso"
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
                   data-testid="tab-uso"
                 >
-                  Cómo Usarla
+                  {t('tesis.tabs.usage')}
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="resumen" className="pt-6 space-y-6">
-                <div className="space-y-4">
+              <TabsContent value="resumen" className="pt-6">
+                <div className="space-y-6">
                   <div>
-                    <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">
-                      Qué dice la tesis
+                    <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">
+                      {t('tesis.whatItSays')}
                     </h3>
                     <p className="text-base leading-relaxed text-foreground" data-testid="text-que-dice">
                       {tesis.abstract || tesis.body?.slice(0, 500)}
                     </p>
                   </div>
 
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">
-                      Cuándo aplica
-                    </h3>
-                    <p className="text-base leading-relaxed text-foreground" data-testid="text-cuando-aplica">
-                      {tesis.por_que_aplica}
-                    </p>
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">
-                      Cuándo NO aplica
-                    </h3>
-                    <p className="text-base leading-relaxed text-foreground" data-testid="text-cuando-no-aplica">
-                      Esta tesis puede no aplicar cuando los hechos difieren sustancialmente del supuesto normativo, 
-                      cuando existe jurisprudencia más reciente que la contradice, o cuando la materia específica 
-                      del caso no corresponde exactamente con el criterio establecido.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="pt-4">
                   <div className="rounded-lg border border-border bg-muted/30 p-4">
                     <div className="flex items-start gap-3">
                       <div className="shrink-0 p-2 rounded-lg bg-primary/10">
@@ -178,7 +160,7 @@ export default function TesisDetail() {
                       </div>
                       <div>
                         <p className="text-sm font-medium text-foreground mb-1">
-                          Fuerza: {tesis.fuerza}
+                          {t('tesis.relevance')}: {tesis.relevanceScore ? `${(tesis.relevanceScore * 100).toFixed(1)}%` : tesis.score ? `${tesis.score.toFixed(1)}%` : 'N/A'}
                         </p>
                         <p className="text-sm text-muted-foreground" data-testid="text-razon-fuerza">
                           {tesis.razon_fuerza}
@@ -190,9 +172,9 @@ export default function TesisDetail() {
               </TabsContent>
 
               <TabsContent value="texto" className="pt-6">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                    Texto íntegro
+                    {t('tesis.fullText')}
                   </h3>
                   <Button
                     variant="outline"
@@ -202,7 +184,7 @@ export default function TesisDetail() {
                     data-testid="button-copiar-texto"
                   >
                     {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    {copied ? "Copiado" : "Copiar"}
+                    {copied ? t('tesis.copied') : t('tesis.copy')}
                   </Button>
                 </div>
                 <Card className="border-card-border">
@@ -217,46 +199,88 @@ export default function TesisDetail() {
                 </Card>
               </TabsContent>
 
-              <TabsContent value="uso" className="pt-6 space-y-6">
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">
-                    Ejemplo de argumento conservador
-                  </h3>
-                  <Card className="border-card-border">
-                    <CardContent className="p-6">
-                      <p className="font-serif text-base leading-loose text-foreground italic">
-                        "Conforme al criterio sostenido por {tesis.organo_jurisdiccional} en la tesis 
-                        identificada con el rubro "{tesis.title.slice(0, 60)}...", resulta aplicable 
-                        al caso que nos ocupa el principio jurídico que establece que..."
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
+              <TabsContent value="uso" className="pt-6">
+                <div className="space-y-6">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                        {t('tesis.conservativeArgument')}
+                      </h3>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          const argumentText = `"Conforme al criterio sostenido por ${tesis.organo_jurisdiccional} en la tesis identificada con el rubro "${tesis.title.slice(0, 60)}...", resulta aplicable al caso que nos ocupa el principio jurídico que establece que..."`;
+                          await navigator.clipboard.writeText(argumentText);
+                          setCopiedArgument(true);
+                          setTimeout(() => setCopiedArgument(false), 2000);
+                          toast({
+                            title: t('tesis.copied'),
+                            description: t('tesis.copyArgument'),
+                          });
+                        }}
+                        className="gap-2"
+                      >
+                        {copiedArgument ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                        {copiedArgument ? t('tesis.copied') : t('tesis.copy')}
+                      </Button>
+                    </div>
+                    <Card className="border-card-border">
+                      <CardContent className="p-6">
+                        <p className="font-serif text-base leading-loose text-foreground italic">
+                          "Conforme al criterio sostenido por {tesis.organo_jurisdiccional} en la tesis 
+                          identificada con el rubro "{tesis.title.slice(0, 60)}...", resulta aplicable 
+                          al caso que nos ocupa el principio jurídico que establece que..."
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
 
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">
-                    Cita formal
-                  </h3>
-                  <Card className="border-card-border bg-muted/30">
-                    <CardContent className="p-4">
-                      <p className="font-mono text-sm text-foreground" data-testid="text-cita-formal-detalle">
-                        {tesis.title}. {tesis.tipo}. {tesis.organo_jurisdiccional}. {tesis.epoca}. 
-                        {tesis.fuente && ` ${tesis.fuente}.`}
-                        {tesis.localizacion_pagina && ` Página ${tesis.localizacion_pagina}.`}
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                        {t('tesis.formalCitation')}
+                      </h3>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          const citationText = `${tesis.title}. ${tesis.tipo}. ${tesis.organo_jurisdiccional}. ${tesis.epoca}.${tesis.fuente ? ` ${tesis.fuente}.` : ''}${tesis.localizacion_pagina ? ` Página ${tesis.localizacion_pagina}.` : ''}`;
+                          await navigator.clipboard.writeText(citationText);
+                          setCopiedCitation(true);
+                          setTimeout(() => setCopiedCitation(false), 2000);
+                          toast({
+                            title: t('tesis.copied'),
+                            description: t('tesis.copyCitation'),
+                          });
+                        }}
+                        className="gap-2"
+                      >
+                        {copiedCitation ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                        {copiedCitation ? t('tesis.copied') : t('tesis.copy')}
+                      </Button>
+                    </div>
+                    <Card className="border-card-border bg-muted/30">
+                      <CardContent className="p-4">
+                        <p className="font-mono text-sm text-foreground" data-testid="text-cita-formal-detalle">
+                          {tesis.title}. {tesis.tipo}. {tesis.organo_jurisdiccional}. {tesis.epoca}. 
+                          {tesis.fuente && ` ${tesis.fuente}.`}
+                          {tesis.localizacion_pagina && ` Página ${tesis.localizacion_pagina}.`}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
 
-                <Button
-                  size="lg"
-                  className="w-full gap-2"
-                  onClick={() => setModalOpen(true)}
-                  data-testid="button-usar-tesis"
-                >
-                  <FileText className="h-5 w-5" />
-                  Usar esta tesis en mi escrito
-                </Button>
+                  <Button
+                    size="lg"
+                    className="w-full gap-2"
+                    onClick={() => setModalOpen(true)}
+                    data-testid="button-usar-tesis"
+                  >
+                    <FileText className="h-5 w-5" />
+                    {t('tesis.useInDocument')}
+                  </Button>
+                </div>
               </TabsContent>
             </Tabs>
           </div>
@@ -265,14 +289,14 @@ export default function TesisDetail() {
             <Card className="border-card-border">
               <CardContent className="p-6 space-y-4">
                 <h3 className="text-sm font-medium text-foreground uppercase tracking-wide">
-                  Datos de la tesis
+                  {t('tesis.data')}
                 </h3>
                 
                 <div className="space-y-3 text-sm">
                   <div className="flex items-start gap-3">
                     <Building2 className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Órgano</p>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">{t('tesis.organ')}</p>
                       <p className="text-foreground">{tesis.organo_jurisdiccional}</p>
                     </div>
                   </div>
@@ -280,15 +304,15 @@ export default function TesisDetail() {
                   <div className="flex items-start gap-3">
                     <BookOpen className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Materia</p>
-                      <p className="text-foreground">{tesis.materias || "General"}</p>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">{t('tesis.matter')}</p>
+                      <p className="text-foreground">{tesis.materias || t('tesis.general')}</p>
                     </div>
                   </div>
 
                   <div className="flex items-start gap-3">
                     <Calendar className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Época</p>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">{t('tesis.epoch')}</p>
                       <p className="text-foreground">{tesis.epoca}</p>
                     </div>
                   </div>
@@ -297,7 +321,7 @@ export default function TesisDetail() {
                     <div className="flex items-start gap-3">
                       <FileText className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Fuente</p>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">{t('tesis.source')}</p>
                         <p className="text-foreground">{tesis.fuente}</p>
                       </div>
                     </div>
@@ -307,7 +331,7 @@ export default function TesisDetail() {
                     <div className="flex items-start gap-3">
                       <Calendar className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Año</p>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">{t('tesis.year')}</p>
                         <p className="text-foreground">{tesis.localizacion_anio}</p>
                       </div>
                     </div>
@@ -323,7 +347,7 @@ export default function TesisDetail() {
                     data-testid="link-fuente-oficial"
                   >
                     <ExternalLink className="h-4 w-4" />
-                    Ver en fuente oficial
+                    {t('tesis.viewOfficial')}
                   </a>
                 )}
               </CardContent>

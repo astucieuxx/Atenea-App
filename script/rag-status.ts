@@ -35,6 +35,10 @@ async function main() {
     const pool = getPool();
     const client = await pool.connect();
     
+    // Configurar timeout ilimitado para queries largas
+    await client.query("SET statement_timeout = 0");
+    await client.query("SET lock_timeout = 0");
+    
     // Verificar extensión pgvector
     const vectorCheck = await client.query(
       "SELECT EXISTS(SELECT 1 FROM pg_extension WHERE extname = 'vector') as has_vector"

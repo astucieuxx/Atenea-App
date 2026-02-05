@@ -31,12 +31,23 @@ export function getPool(): pg.Pool {
       connectionString,
       max: 5, // Reducido para evitar saturar Supabase
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 60000, // Aumentado a 60 segundos
+      connectionTimeoutMillis: 120000, // Aumentado a 120 segundos
       // Parámetros adicionales para Supabase
       ssl: process.env.DATABASE_URL?.includes('supabase') ? { rejectUnauthorized: false } : undefined,
       // Configuración adicional para Supabase pooler
       keepAlive: true,
       keepAliveInitialDelayMillis: 10000,
+    });
+
+    // Configurar timeouts ilimitados en cada nueva conexión
+    pool.on('connect', async (client) => {
+      try {
+        await client.query("SET statement_timeout = 0");
+        await client.query("SET lock_timeout = 0");
+      } catch (error) {
+        // Ignorar errores al configurar (puede no tener permisos en algunos servicios)
+        console.warn("⚠️  No se pudo configurar statement_timeout:", error);
+      }
     });
 
     // Manejo de errores del pool - reconectar si es necesario
@@ -248,12 +259,18 @@ export interface VectorSearchResult {
 }
 
 /**
- * Búsqueda por similitud coseno usando pgvector
+ * Búsqueda por similitud coseno usando pgvector (optimizada)
+ * 
+ * Optimizaciones aplicadas:
+ * - Usa ef_search para controlar precisión/velocidad de búsqueda HNSW
+ * - Query optimizada para mejor uso del índice
+ * - Filtro de similitud aplicado después de ordenamiento para mejor rendimiento
  */
 export async function vectorSearch(
   queryEmbedding: number[],
   limit: number = 10,
-  minSimilarity: number = 0.5
+  minSimilarity: number = 0.5,
+  efSearch: number = 64 // Parámetro HNSW: más alto = más preciso pero más lento
 ): Promise<VectorSearchResult[]> {
   const maxRetries = 3;
   let lastError: Error | null = null;
@@ -262,8 +279,38 @@ export async function vectorSearch(
     const client = await getPool().connect();
 
     try {
-      // pgvector usa el operador <=> para distancia coseno
-      // 1 - distancia = similitud
+      // Optimización: Usar ef_search para controlar precisión/velocidad
+      // ef_search más alto = más preciso pero más lento
+      // Recomendado: 40-100 para balance óptimo
+      // 
+      // Query optimizada:
+      // 1. Configurar ef_search en la sesión
+      // 2. Ordenar primero (usa índice HNSW eficientemente)
+      // 3. Obtener más resultados de los necesarios para filtrar después
+      // 4. Filtrar por similitud mínima en memoria (más eficiente)
+      
+      // Configurar ef_search para esta sesión (opcional, puede fallar en algunos entornos)
+      // Nota: SET LOCAL solo funciona en transacciones, así que usamos SET sin LOCAL
+      // Validar que efSearch sea un número válido
+      const validEfSearch = Number.isInteger(efSearch) && efSearch > 0 ? efSearch : 64;
+      try {
+        await client.query(`SET hnsw.ef_search = ${validEfSearch}`);
+      } catch (setError) {
+        // Si falla el SET, continuar sin él (usará el valor por defecto)
+        console.warn(`[vectorSearch] No se pudo configurar ef_search, usando valor por defecto:`, setError);
+      }
+      
+      // Obtener más resultados de los necesarios para compensar el filtrado
+      const fetchLimit = Math.min(limit * 3, 100); // Obtener hasta 3x más o 100 máximo
+      
+      // Validar que el embedding sea un array válido
+      if (!Array.isArray(queryEmbedding) || queryEmbedding.length === 0) {
+        throw new Error("queryEmbedding debe ser un array no vacío");
+      }
+      
+      const embeddingJson = JSON.stringify(queryEmbedding);
+      console.log(`[vectorSearch] Ejecutando búsqueda vectorial con embedding de ${queryEmbedding.length} dimensiones`);
+      
       const result = await client.query(
         `SELECT 
           c.id AS chunk_id,
@@ -278,26 +325,33 @@ export async function vectorSearch(
         FROM tesis_chunks c
         INNER JOIN tesis t ON c.tesis_id = t.id
         WHERE c.embedding IS NOT NULL
-          AND (1 - (c.embedding <=> $1::vector)) >= $2
         ORDER BY c.embedding <=> $1::vector
-        LIMIT $3`,
-        [JSON.stringify(queryEmbedding), minSimilarity, limit]
+        LIMIT $2`,
+        [embeddingJson, fetchLimit]
       );
-
-      const results = result.rows.map(row => ({
-        chunkId: row.chunk_id,
-        tesisId: row.tesis_id,
-        chunkText: row.chunk_text,
-        chunkIndex: row.chunk_index,
-        chunkType: row.chunk_type,
-        similarity: parseFloat(row.similarity),
-        title: row.title,
-        tipo: row.tipo,
-        organo_jurisdiccional: row.organo_jurisdiccional,
-      }));
+      
+      // Filtrar por similitud mínima después de obtener resultados
+      // Esto es más eficiente que filtrar en la query cuando hay muchos vectores
+      const filteredResults = result.rows
+        .filter((row: any) => {
+          const similarity = parseFloat(row.similarity || 0);
+          return similarity >= minSimilarity;
+        })
+        .slice(0, limit)
+        .map((row: any) => ({
+          chunkId: row.chunk_id,
+          tesisId: row.tesis_id,
+          chunkText: row.chunk_text,
+          chunkIndex: row.chunk_index,
+          chunkType: row.chunk_type,
+          similarity: parseFloat(row.similarity || 0),
+          title: row.title,
+          tipo: row.tipo,
+          organo_jurisdiccional: row.organo_jurisdiccional,
+        }));
 
       client.release();
-      return results;
+      return filteredResults;
     } catch (error) {
       if (client) {
         try {

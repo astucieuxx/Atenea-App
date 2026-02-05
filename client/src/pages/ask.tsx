@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowRight, Loader2, FileText, Sparkles, AlertTriangle, CheckCircle2, BookOpen, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { AskResponse } from "@shared/schema";
 import { Link } from "wouter";
+import { useLanguage } from "@/contexts/language-context";
 
 // Componente para formatear la respuesta con estilo profesional
 function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{ id: string; title: string; citation: string }> }) {
@@ -40,7 +41,7 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
       if (trimmedLine === '---' || trimmedLine.startsWith('---')) {
         if (currentSection.length > 0) {
           elements.push(
-            <div key={`section-${sectionKey++}`} className="mb-8 sm:mb-10">
+            <div key={`section-${sectionKey++}`} className="mb-3 sm:mb-4">
               {currentSection}
             </div>
           );
@@ -48,7 +49,7 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
         }
         // Línea separadora elegante con diseño decorativo
         elements.push(
-          <div key={`divider-${index}`} className="my-8 sm:my-10 relative">
+          <div key={`divider-${index}`} className="my-3 sm:my-4 relative">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-border"></div>
             </div>
@@ -77,8 +78,8 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
         // Título elegante con estilo formal
         const titleText = titleMatch[1];
         elements.push(
-          <div key={`title-wrapper-${index}`} className="mb-6 sm:mb-8 mt-8 sm:mt-10 first:mt-0">
-            <h3 className={`${sizeClasses.title} font-serif font-bold text-foreground mb-2 tracking-tight`}>
+          <div key={`title-wrapper-${index}`} className="mb-2 sm:mb-2.5 mt-2 sm:mt-3 first:mt-0">
+            <h3 className={`${sizeClasses.title} font-serif font-bold text-foreground mb-0 tracking-tight`}>
               {titleText}
             </h3>
           </div>
@@ -87,13 +88,13 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
         return;
       }
       
-      // Detectar listas con viñetas
+        // Detectar listas con viñetas
       if (trimmedLine.startsWith('- ')) {
         const content = trimmedLine.substring(2);
         // Procesar negritas dentro de la lista
         const processedContent = processBoldAndLinks(content);
         currentSection.push(
-          <div key={`list-${index}`} className={`mb-4 sm:mb-5 ${sizeClasses.list} text-foreground font-serif leading-relaxed flex items-start gap-4 pl-2`}>
+          <div key={`list-${index}`} className={`mb-2 sm:mb-2.5 ${sizeClasses.list} text-foreground font-serif leading-relaxed flex items-start gap-2.5 pl-2`}>
             <span className="text-muted-foreground mt-2 shrink-0 font-bold text-lg">▪</span>
             <span className="flex-1" style={{ lineHeight: '1.9' }}>{processedContent}</span>
           </div>
@@ -106,9 +107,9 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
       if (trimmedLine.length > 0) {
         const processedContent = processBoldAndLinks(trimmedLine);
         // Si viene después de un título, agregar más espacio
-        const marginTop = lastWasTitle ? 'mt-4' : '';
+        const marginTop = lastWasTitle ? 'mt-0.5' : '';
         currentSection.push(
-          <p key={`para-${index}`} className={`mb-4 sm:mb-5 ${sizeClasses.paragraph} text-foreground font-serif leading-relaxed ${marginTop}`} style={{ lineHeight: '1.9' }}>
+          <p key={`para-${index}`} className={`mb-1.5 sm:mb-2 ${sizeClasses.paragraph} text-foreground font-serif leading-relaxed ${marginTop}`} style={{ lineHeight: '1.9' }}>
             {processedContent}
           </p>
         );
@@ -122,7 +123,7 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
     // Agregar última sección
     if (currentSection.length > 0) {
       elements.push(
-        <div key={`section-${sectionKey++}`} className="mb-8 sm:mb-10">
+        <div key={`section-${sectionKey++}`} className="mb-3 sm:mb-4">
           {currentSection}
         </div>
       );
@@ -232,9 +233,9 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
               element.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
           }}
-          className="text-primary hover:text-primary/80 underline decoration-muted-foreground/30 hover:decoration-primary/50 transition-colors font-semibold"
+          className="text-primary hover:text-primary/80 underline decoration-muted-foreground/30 hover:decoration-primary/50 transition-colors font-bold"
         >
-          {match.tesisIndex > 0 ? `[#${match.tesisIndex}]` : match.tesisIndex}
+          [{match.tesisIndex}]
         </a>
       );
       
@@ -304,11 +305,29 @@ export default function Ask() {
   // Estado para controlar si ya se ejecutó la búsqueda automática
   const [autoSearchExecuted, setAutoSearchExecuted] = useState(false);
   
+  // Estados para el contador de tiempo
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [totalTimeSeconds, setTotalTimeSeconds] = useState<number | null>(null);
+  const [startTime, setStartTime] = useState<number | null>(null);
+  
   const { toast } = useToast();
+  const { t } = useLanguage();
 
   const mutation = useMutation({
     mutationFn: async (data: { question: string }) => {
+      const start = Date.now();
+      setStartTime(start);
+      setElapsedSeconds(0);
+      setTotalTimeSeconds(null);
+      
       const response = await apiRequest("POST", "/api/ask", data);
+      
+      const end = Date.now();
+      const totalSeconds = ((end - start) / 1000);
+      setTotalTimeSeconds(totalSeconds);
+      setElapsedSeconds(0);
+      setStartTime(null);
+      
       return response as AskResponse;
     },
     onSuccess: (data, variables) => {
@@ -324,13 +343,33 @@ export default function Ask() {
       setSavedResult(data);
     },
     onError: (error: any) => {
+      // Resetear contador en caso de error
+      setElapsedSeconds(0);
+      setTotalTimeSeconds(null);
+      setStartTime(null);
+      
       toast({
-        title: "Error",
-        description: error?.message || "No se pudo procesar la pregunta. Intente de nuevo.",
+        title: t('search.error'),
+        description: error?.message || t('search.errorDesc'),
         variant: "destructive",
       });
     },
   });
+
+  // Contador de tiempo mientras se genera la respuesta
+  useEffect(() => {
+    if (!mutation.isPending || !startTime) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const elapsed = Math.floor((now - startTime) / 1000);
+      setElapsedSeconds(elapsed);
+    }, 100); // Actualizar cada 100ms para suavidad
+
+    return () => clearInterval(interval);
+  }, [mutation.isPending, startTime]);
 
   // Ejecutar búsqueda automática si hay una pregunta nueva desde la landing page
   useEffect(() => {
@@ -355,6 +394,10 @@ export default function Ask() {
       // Si es una pregunta nueva, ejecutar búsqueda automáticamente
       if (isNewQuestion) {
         setAutoSearchExecuted(true);
+        // Resetear contador antes de iniciar búsqueda automática
+        setElapsedSeconds(0);
+        setTotalTimeSeconds(null);
+        setStartTime(null);
         mutation.mutate({ question: question.trim() });
       }
     }
@@ -390,12 +433,16 @@ export default function Ask() {
     e.preventDefault();
     if (question.trim().length < 10) {
       toast({
-        title: "Pregunta muy corta",
-        description: "Por favor proporcione una pregunta más detallada.",
+        title: t('search.questionTooShort'),
+        description: t('search.questionTooShortDesc'),
         variant: "destructive",
       });
       return;
     }
+    // Resetear contador antes de iniciar nueva búsqueda
+    setElapsedSeconds(0);
+    setTotalTimeSeconds(null);
+    setStartTime(null);
     mutation.mutate({ question: question.trim() });
   };
 
@@ -413,19 +460,26 @@ export default function Ask() {
   return (
     <div className="min-h-screen bg-background">
       {/* Main Content */}
-      <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12 lg:py-16">
-        <div className="max-w-4xl mx-auto space-y-8 sm:space-y-10">
+      <div className="container mx-auto px-4 sm:px-6 pt-2 sm:pt-3 pb-4 sm:pb-6">
+        <div className="max-w-4xl mx-auto space-y-3 sm:space-y-4">
           {/* Title and Instructions */}
-          <div className="space-y-4 sm:space-y-5 animate-fade-up" style={{ animationDelay: '0.1s' }}>
+          <div className="space-y-1.5 sm:space-y-2 animate-fade-up" style={{ animationDelay: '0.1s' }}>
             <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-semibold text-foreground leading-tight">
-              Búsqueda
+              {t('search.title')}
             </h1>
             <div className="space-y-3 sm:space-y-4 text-muted-foreground font-serif">
               <p className="text-sm sm:text-base leading-relaxed">
-                Esta herramienta utiliza <strong className="text-foreground font-semibold">Inteligencia Artificial (AI)</strong> y tecnología <strong className="text-foreground font-semibold">RAG (Retrieval-Augmented Generation)</strong> para buscar y analizar automáticamente miles de tesis y precedentes, proporcionándote respuestas precisas y fundamentadas.
+                {t('search.description1').split('Inteligencia Artificial (AI)').map((part, i, arr) => 
+                  i === arr.length - 1 ? part : (
+                    <React.Fragment key={i}>
+                      {part}
+                      <strong className="text-foreground font-semibold">Inteligencia Artificial (AI)</strong>
+                    </React.Fragment>
+                  )
+                )}
               </p>
               <p className="text-sm sm:text-base leading-relaxed">
-                Escribe tu pregunta jurídica en lenguaje natural. Sé específico para obtener mejores resultados.
+                {t('search.description2')}
               </p>
             </div>
           </div>
@@ -433,48 +487,67 @@ export default function Ask() {
           {/* Search Form */}
           <Card className="border-border bg-card shadow-sm animate-fade-up" style={{ animationDelay: '0.2s' }}>
             <CardContent className="p-6 sm:p-8 lg:p-10">
-              <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
+              <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
                 <div className="space-y-3">
                   <label htmlFor="question-input" className="text-base sm:text-lg font-serif font-semibold text-foreground">
-                    Tu pregunta jurídica
+                    {t('search.questionLabel')}
                   </label>
                   <Textarea
                     id="question-input"
                     value={question}
                     onChange={(e) => setQuestion(e.target.value)}
-                    placeholder="Ejemplo: ¿Cuándo procede el amparo directo? ¿Qué requisitos debe cumplir?"
+                    placeholder={t('search.questionPlaceholder')}
                     className="min-h-[140px] sm:min-h-[160px] resize-none text-base sm:text-lg font-serif leading-relaxed border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-0 focus-visible:ring-0"
                   />
                 </div>
-                <div className="flex justify-end">
-                  <Button
-                    type="submit"
-                    size="default"
-                    variant="navy"
-                    className="gap-2 text-sm font-serif px-6"
-                    disabled={mutation.isPending || question.trim().length < 10}
-                  >
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  {/* Contador de tiempo mientras se genera */}
+                  {mutation.isPending && (
+                    <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-md bg-muted/40 border border-border/50">
+                      <div className="flex items-center gap-2">
+                        <div className="relative">
+                          <div className="w-2 h-2 rounded-full bg-primary/80"></div>
+                          <div className="absolute inset-0 w-2 h-2 rounded-full bg-primary/40 animate-ping"></div>
+                        </div>
+                        <span className="text-xs font-mono font-medium text-foreground/80 tabular-nums tracking-wider">
+                          {elapsedSeconds < 60 
+                            ? `${elapsedSeconds.toFixed(1)}s` 
+                            : `${Math.floor(elapsedSeconds / 60)}m ${(elapsedSeconds % 60).toFixed(1)}s`
+                          }
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex justify-end w-full sm:w-auto">
+                    <Button
+                      type="submit"
+                      size="default"
+                      variant="navy"
+                      className="gap-2 text-sm font-serif px-6"
+                      disabled={mutation.isPending || question.trim().length < 10}
+                    >
                     {mutation.isPending ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Generando...
+                        {t('search.generating')}
                       </>
                     ) : (
                       <>
                         <Search className="h-4 w-4" />
-                        Buscar
+                        {t('search.button')}
                         <ArrowRight className="h-4 w-4" />
                       </>
                     )}
-                  </Button>
+                    </Button>
+                  </div>
                 </div>
               </form>
 
               {/* Example Questions - Solo mostrar si NO hay resultado */}
               {showExamples && (
-                <div className="mt-8 sm:mt-10 pt-6 sm:pt-8 border-t border-border animate-fade-up" style={{ animationDelay: '0.5s' }}>
+                <div className="mt-5 sm:mt-6 pt-4 sm:pt-5 border-t border-border animate-fade-up" style={{ animationDelay: '0.5s' }}>
                   <p className="text-sm sm:text-base text-muted-foreground uppercase tracking-wider font-serif font-semibold mb-4 sm:mb-5">
-                    Ejemplos de preguntas
+                    {t('search.examples')}
                   </p>
                   <div className="grid gap-3 sm:gap-4">
                     {EXAMPLE_QUESTIONS.map((example, index) => (
@@ -500,9 +573,9 @@ export default function Ask() {
                 <div className="flex items-start gap-4">
                   <AlertTriangle className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
                   <div>
-                    <h3 className="font-semibold text-foreground mb-2 font-serif text-lg">Error al procesar</h3>
+                    <h3 className="font-semibold text-foreground mb-2 font-serif text-lg">{t('search.error')}</h3>
                     <p className="text-base text-muted-foreground font-serif leading-relaxed">
-                      No se pudo generar la respuesta. Verifica tu conexión e intenta de nuevo.
+                      {t('search.errorDesc')}
                     </p>
                   </div>
                 </div>
@@ -511,15 +584,26 @@ export default function Ask() {
           )}
 
           {hasResult && (
-            <div className="space-y-6 sm:space-y-8">
+            <div className="space-y-3 sm:space-y-4">
               {/* Answer */}
               <Card className="border-border bg-card shadow-sm animate-fade-up" style={{ animationDelay: '0.1s' }}>
-                <CardHeader className="p-6 sm:p-8 pb-4 sm:pb-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6">
-                    <CardTitle className="flex items-center gap-3 text-foreground text-xl sm:text-2xl font-serif font-semibold">
-                      <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
-                      Respuesta
-                    </CardTitle>
+                <CardHeader className="p-6 sm:p-8 pb-0.5 sm:pb-1">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+                    <div className="flex flex-col gap-1">
+                      <CardTitle className="flex items-center gap-3 text-foreground text-xl sm:text-2xl font-serif font-semibold">
+                        <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
+                        {t('search.answer')}
+                      </CardTitle>
+                      {/* Tiempo total de generación */}
+                      {totalTimeSeconds !== null && (
+                        <p className="text-[10px] text-muted-foreground/60 font-serif tracking-wide ml-8">
+                          {totalTimeSeconds < 60 
+                            ? `Generada en ${totalTimeSeconds.toFixed(1)} segundos`
+                            : `Generada en ${Math.floor(totalTimeSeconds / 60)} minuto${Math.floor(totalTimeSeconds / 60) > 1 ? 's' : ''} ${(totalTimeSeconds % 60).toFixed(1)} segundo${(totalTimeSeconds % 60).toFixed(1) !== '1.0' ? 's' : ''}`
+                          }
+                        </p>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge
                         variant={
@@ -531,17 +615,17 @@ export default function Ask() {
                         }
                         className="font-serif"
                       >
-                        Confianza: {result.confidence === "high" ? "Alta" : result.confidence === "medium" ? "Media" : "Baja"}
+                        {t('search.confidence')}: {result.confidence === "high" ? t('search.confidence.high') : result.confidence === "medium" ? t('search.confidence.medium') : t('search.confidence.low')}
                       </Badge>
                       {result.hasEvidence ? (
                         <Badge variant="default" className="gap-1 font-serif">
                           <CheckCircle2 className="h-3 w-3" />
-                          Con evidencia
+                          {t('search.withEvidence')}
                         </Badge>
                       ) : (
                         <Badge variant="outline" className="gap-1 font-serif">
                           <AlertTriangle className="h-3 w-3" />
-                          Sin evidencia suficiente
+                          {t('search.withoutEvidence')}
                         </Badge>
                       )}
                     </div>
@@ -557,15 +641,15 @@ export default function Ask() {
               {/* Tesis Used */}
               {result.tesisUsed.length > 0 && (
                 <Card className="border-border bg-card shadow-sm animate-fade-up" style={{ animationDelay: '0.2s' }}>
-                  <CardHeader className="p-6 sm:p-8 pb-4 sm:pb-6">
+                  <CardHeader className="p-6 sm:p-8 pb-3 sm:pb-4">
                     <CardTitle className="flex flex-wrap items-center gap-3 text-foreground text-xl sm:text-2xl font-serif font-semibold">
                       <BookOpen className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
-                      Tesis que respaldan la respuesta
+                      {t('search.tesisSupport')}
                       <Badge variant="secondary" className="text-sm font-serif">{result.tesisUsed.length}</Badge>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-6 sm:p-8 pt-0">
-                    <div className="space-y-5 sm:space-y-6">
+                    <div className="space-y-3 sm:space-y-4">
                       {result.tesisUsed.map((tesis, index) => (
                         <Card key={tesis.id} id={`tesis-${index + 1}`} className="border-border bg-secondary/30 scroll-mt-20">
                           <CardContent className="p-6 sm:p-8">
@@ -576,7 +660,7 @@ export default function Ask() {
                                   #{index + 1}
                                 </Badge>
                                 <span className="text-sm text-muted-foreground font-serif">
-                                  Relevancia: {(tesis.relevanceScore * 100).toFixed(1)}%
+                                  {t('search.relevance')}: {(tesis.relevanceScore * 100).toFixed(1)}%
                                 </span>
                               </div>
                               
@@ -590,7 +674,7 @@ export default function Ask() {
                                 <Link href={`/tesis/${tesis.id}`}>
                                   <Button variant="outline" size="sm" className="gap-2 font-serif">
                                     <FileText className="h-4 w-4" />
-                                    Ver tesis completa
+                                    {t('search.viewFull')}
                                   </Button>
                                 </Link>
                               </div>
@@ -605,16 +689,15 @@ export default function Ask() {
 
               {!result.hasEvidence && (
                 <Card className="border-yellow-500/50 bg-yellow-500/5 shadow-lg animate-fade-up" style={{ animationDelay: '0.2s' }}>
-                  <CardContent className="p-6">
+                  <CardContent className="p-6 sm:p-8">
                     <div className="flex items-start gap-3">
                       <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-500 mt-0.5 shrink-0" />
                       <div>
                         <h3 className="font-semibold text-foreground mb-1">
-                          Evidencia limitada
+                          {t('search.limitedEvidence')}
                         </h3>
                         <p className="text-sm text-muted-foreground font-body">
-                          No se encontró jurisprudencia directamente aplicable a esta pregunta.
-                          Se recomienda reformular la consulta con términos jurídicos más específicos.
+                          {t('search.limitedEvidenceDesc')}
                         </p>
                       </div>
                     </div>
@@ -629,7 +712,7 @@ export default function Ask() {
             <Link href="/">
               <Button variant="outline" className="gap-2">
                 <ArrowRight className="h-4 w-4 rotate-180" />
-                Volver al inicio
+                {t('search.backHome')}
               </Button>
             </Link>
           </div>

@@ -19,6 +19,10 @@ async function main() {
     const pool = getPool();
     const client = await pool.connect();
 
+    // Configurar timeout ilimitado para queries largas
+    await client.query("SET statement_timeout = 0");
+    await client.query("SET lock_timeout = 0");
+
     // Contar tesis que tienen al menos un chunk con embedding
     const result = await client.query(`
       SELECT COUNT(DISTINCT tesis_id) as tesis_with_embeddings
