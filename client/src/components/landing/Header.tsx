@@ -25,10 +25,10 @@ export default function Header() {
               }}
             >
               <AteneaLogo 
-                variant="arrow1" 
+                variant="svg" 
                 size={40} 
                 showText={false}
-                className="[&_svg]:w-full [&_svg]:h-full"
+                className="[&_img]:w-full [&_img]:h-full"
                 style={{ 
                   zIndex: 1000, 
                   position: 'relative',
@@ -38,8 +38,8 @@ export default function Header() {
                 }}
               />
             </div>
-            <span className="font-display text-xl font-semibold text-foreground relative z-[100]">
-              Atenea
+            <span className="font-display text-xl font-bold text-foreground relative z-[100] uppercase">
+              ATENEA
             </span>
           </div>
 

@@ -10,10 +10,10 @@ export default function Footer() {
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 flex items-center justify-center">
                 <AteneaLogo 
-                  variant="arrow1" 
+                  variant="svg" 
                   size={40} 
                   showText={false}
-                  className="[&_svg]:w-full [&_svg]:h-full"
+                  className="[&_img]:w-full [&_img]:h-full"
                 />
               </div>
               <span className="font-display text-xl font-semibold text-white">

@@ -1,10 +1,12 @@
 import React from "react";
+import ateneaLogoSvg from "@/assets/atenea_logo.svg";
 
 interface AteneaLogoProps {
   className?: string;
   size?: number;
-  variant?: "v1" | "v2" | "v3" | "v4" | "v5" | "v6" | "v7" | "v8" | "v9" | "v10" | "v11" | "v12" | "v13" | "v14" | "owl1" | "owl2" | "owl3" | "owl4" | "owl5" | "arrow1" | "arrow2" | "arrow3" | "arrow4" | "arrow5" | "arrow6";
+  variant?: "v1" | "v2" | "v3" | "v4" | "v5" | "v6" | "v7" | "v8" | "v9" | "v10" | "v11" | "v12" | "v13" | "v14" | "owl1" | "owl2" | "owl3" | "owl4" | "owl5" | "arrow1" | "arrow2" | "arrow3" | "arrow4" | "arrow5" | "arrow6" | "svg";
   showText?: boolean;
+  style?: React.CSSProperties;
 }
 
 // Variante 1: A minimalista con balanza integrada (RECOMENDADA - Serio, elegante)
@@ -1030,11 +1032,36 @@ function LogoOwl5({ size = 40 }: { size: number }) {
   );
 }
 
+// Variante SVG: Logo Atenea sin fondo (transparente) - usa colores originales
+function LogoSvg({ size = 40 }: { size: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 1024 1024"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{
+        display: 'block',
+        width: `${size}px`,
+        height: `${size}px`
+      }}
+    >
+      {/* Fondo removido - solo los elementos del logo con colores originales */}
+      {/* Elementos principales en azul oscuro (#1F3A51) */}
+      <path transform="translate(513,191)" d="m0 0 6 2 52 26 19 10 26 13 19 10 47 24 101 52 2 1v255h-542v-254l8-5 48-24 19-10 16-8 27-14 41-21 32-16 19-10 24-12 19-10z" fill="#1F3A51"/>
+      <path transform="translate(396,624)" d="m0 0h170l219 1v75l-33 17-26 13-19 10-26 13-19 10-40 20-19 10-32 16-19 10-36 18-5-1-74-38-36-18-19-10-52-26-19-10-58-29-10-6v-74z" fill="#1F3A51"/>
+      {/* Elementos secundarios (la "A" interior) en blanco */}
+      <path transform="translate(513,307)" d="m0 0 3 3 101 202 11 23 12 24v2h-58l-38-78-18-36-11-23-2-2-12 24-11 23-34 68-11 23-1 1h-58l2-6 44-88 10-19 70-140z" fill="#FFFFFF"/>
+      <path transform="translate(514,213)" d="m0 0 19 9 29 15 20 10 19 10 47 24 27 14 26 13 19 10 22 11 19 10 4 2v230h-11v-223l-6-2-129-66-35-18-68-35-6 2-34 17-19 10-20 10-19 10-32 16-19 10-24 12-19 10-24 12-19 10-6 2v223h-11l-1-1v-228l19-10 39-20 139-71 29-15z" fill="#FFFFFF"/>
+      <path transform="translate(263,638)" d="m0 0h12l1 42 19 10 50 25 19 10 50 25 19 10 20 10 19 10 24 12 17 9 5-1 38-19 19-10 26-13 19-10 41-21 47-24 20-10 19-10 6-3 1-42h11v50l-60 30-19 10-32 16-19 10-30 15-19 10-28 14-19 10-24 12-5-2-22-11-19-10-20-10-19-10-28-14-19-10-36-18-19-10-64-32-1-1z" fill="#FFFFFF"/>
+    </svg>
+  );
+}
+
 // Variante ARROW1: A estilizada doble capa (estilo imagen - navy/silver) - PROFESIONAL
+// ACTUALIZADO 2024-01 - Logo con doble capa visible
 function LogoArrow1({ size = 40 }: { size: number }) {
-  // Color explícito para debug - debería verse en cualquier fondo
-  const logoColor = '#1a1a1a'; // Negro sólido para máximo contraste
-  
   return (
     <svg
       width={size}
@@ -1043,33 +1070,18 @@ function LogoArrow1({ size = 40 }: { size: number }) {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className="logo-arrow1"
-      style={{ 
-        display: 'block !important',
-        visibility: 'visible !important',
-        opacity: '1 !important',
-        zIndex: '1000 !important',
-        position: 'relative',
-        width: `${size}px !important`,
-        height: `${size}px !important`,
-        minWidth: `${size}px !important`,
-        minHeight: `${size}px !important`,
-        color: logoColor,
-        fill: logoColor
-      }}
     >
-      {/* Capa exterior (silver/gold) - más grande y más visible */}
+      {/* Capa exterior (grande, más clara) - fillOpacity 0.25 para visibilidad sutil */}
       <path
         d="M24 4 L12 40 L24 36 L36 40 Z"
-        fill={logoColor}
-        fillOpacity="0.6"
-        style={{ fill: logoColor, opacity: 1 }}
+        fill="currentColor"
+        fillOpacity="0.25"
       />
-      {/* Capa interior (navy) - más pequeña y más oscura */}
+      {/* Capa interior (pequeña, más oscura) - completamente opaca */}
       <path
         d="M24 8 L16 36 L24 32 L32 36 Z"
-        fill={logoColor}
+        fill="currentColor"
         fillOpacity="1"
-        style={{ fill: logoColor, opacity: 1 }}
       />
     </svg>
   );
@@ -1213,7 +1225,8 @@ export function AteneaLogo({
   className = "", 
   size = 40, 
   variant = "v1",
-  showText = true 
+  showText = true,
+  style
 }: AteneaLogoProps) {
   const LogoComponent = {
     v1: LogoV1,
@@ -1241,6 +1254,7 @@ export function AteneaLogo({
     arrow4: LogoArrow4,
     arrow5: LogoArrow5,
     arrow6: LogoArrow6,
+    svg: LogoSvg,
   }[variant] || LogoV1;
 
   if (!showText) {
@@ -1256,7 +1270,8 @@ export function AteneaLogo({
           width: `${size}px`,
           height: `${size}px`,
           minWidth: `${size}px`,
-          minHeight: `${size}px`
+          minHeight: `${size}px`,
+          ...(style || {})
         }}
       >
         <LogoComponent size={size} />

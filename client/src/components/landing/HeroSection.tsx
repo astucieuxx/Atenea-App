@@ -46,14 +46,14 @@ export default function HeroSection() {
       <div className="container mx-auto px-6 relative z-10">
         <div className="max-w-4xl mx-auto text-center">
           {/* Logo grande con nombre */}
-          <div className="mb-6 animate-fade-up flex flex-col items-center gap-1">
+          <div className="mb-6 animate-fade-up flex flex-col items-center gap-0">
             <AteneaLogo 
-              variant="arrow1" 
-              size={80} 
+              variant="svg" 
+              size={130} 
               showText={false}
-              className="[&_svg]:w-auto [&_svg]:h-auto"
+              className="[&_img]:w-auto [&_img]:h-auto"
             />
-            <span className="font-display text-xl md:text-2xl lg:text-3xl font-bold text-white">
+            <span className="font-display text-xl md:text-2xl lg:text-3xl font-bold text-white -mt-3">
               ATENEA
             </span>
           </div>
@@ -64,12 +64,12 @@ export default function HeroSection() {
           </p>
 
           {/* Main Heading */}
-          <h1 className="font-display text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold text-white leading-normal mb-3 animate-fade-up" style={{ animationDelay: '0.2s' }}>
+          <h1 className="font-display text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-white leading-normal mb-3 animate-fade-up" style={{ animationDelay: '0.2s' }}>
             Información Jurídica en Segundos
           </h1>
 
           {/* Subtitle */}
-          <p className="text-base md:text-lg text-white max-w-2xl mx-auto mb-8 font-body animate-fade-up" style={{ animationDelay: '0.3s' }}>
+          <p className="text-sm md:text-base text-white max-w-2xl mx-auto mb-8 font-body animate-fade-up" style={{ animationDelay: '0.3s' }}>
             La plataforma de búsqueda inteligente que transforma la manera en que 
             los abogados mexicanos investigan precedentes legales.
           </p>
