@@ -20,9 +20,9 @@ function LogoV1({ size = 40 }: { size: number }) {
       <path
         d="M24 6 L14 38 L18 38 L20 30 L28 30 L30 38 L34 38 L24 6 Z"
         stroke="currentColor"
-        strokeWidth="2.5"
+        strokeWidth="3"
         strokeLinecap="round"
-        strokeLinejoin="round"
+        strokeLinejoin="miter"
         fill="none"
       />
       <line
@@ -31,13 +31,13 @@ function LogoV1({ size = 40 }: { size: number }) {
         x2="28"
         y2="24"
         stroke="currentColor"
-        strokeWidth="2.5"
+        strokeWidth="3"
         strokeLinecap="round"
       />
       <path
         d="M18 38 L18 42 M30 38 L30 42"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="2.5"
         strokeLinecap="round"
       />
       <line
@@ -46,7 +46,7 @@ function LogoV1({ size = 40 }: { size: number }) {
         x2="30"
         y2="42"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="2.5"
         strokeLinecap="round"
       />
     </svg>
@@ -135,9 +135,9 @@ function LogoV4({ size = 40 }: { size: number }) {
       <path
         d="M24 8 L16 36 L20 36 L22 28 L26 28 L28 36 L32 36 L24 8 Z"
         stroke="currentColor"
-        strokeWidth="3"
+        strokeWidth="3.5"
         strokeLinecap="round"
-        strokeLinejoin="round"
+        strokeLinejoin="miter"
         fill="none"
       />
       <line
@@ -146,7 +146,7 @@ function LogoV4({ size = 40 }: { size: number }) {
         x2="28"
         y2="24"
         stroke="currentColor"
-        strokeWidth="3"
+        strokeWidth="3.5"
         strokeLinecap="round"
       />
     </svg>
@@ -736,7 +736,7 @@ function LogoV14({ size = 40 }: { size: number }) {
   );
 }
 
-// Variante OWL1: Búho minimalista estilo imagen (líneas gruesas, navy)
+// Variante OWL1: Búho minimalista estilo imagen (líneas gruesas, navy) - PROFESIONAL
 function LogoOwl1({ size = 40 }: { size: number }) {
   return (
     <svg
@@ -746,51 +746,52 @@ function LogoOwl1({ size = 40 }: { size: number }) {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      {/* Contorno del búho (forma de escudo/invertido) */}
+      {/* Contorno del búho (forma de escudo/invertido) - más sólido */}
       <path
         d="M24 4 Q16 6 12 12 Q10 18 12 24 Q14 30 20 34 Q22 36 24 38 Q26 36 28 34 Q34 30 36 24 Q38 18 36 12 Q32 6 24 4 Z"
         stroke="currentColor"
-        strokeWidth="2.5"
+        strokeWidth="3"
         strokeLinecap="round"
-        strokeLinejoin="round"
+        strokeLinejoin="miter"
         fill="none"
       />
-      {/* Cejas/Forehead arqueadas */}
+      {/* Cejas/Forehead arqueadas - más definidas */}
       <path
         d="M16 14 Q20 12 24 14 Q28 12 32 14"
         stroke="currentColor"
-        strokeWidth="3"
+        strokeWidth="3.5"
         strokeLinecap="round"
         fill="none"
       />
-      {/* Ojos - círculos concéntricos */}
-      <circle cx="20" cy="20" r="4" stroke="currentColor" strokeWidth="2.5" fill="none" />
-      <circle cx="20" cy="20" r="2" fill="currentColor" />
-      <circle cx="28" cy="20" r="4" stroke="currentColor" strokeWidth="2.5" fill="none" />
-      <circle cx="28" cy="20" r="2" fill="currentColor" />
-      {/* Pico (V invertida) */}
+      {/* Ojos - círculos concéntricos más sólidos */}
+      <circle cx="20" cy="20" r="4" stroke="currentColor" strokeWidth="3" fill="none" />
+      <circle cx="20" cy="20" r="2.5" fill="currentColor" />
+      <circle cx="28" cy="20" r="4" stroke="currentColor" strokeWidth="3" fill="none" />
+      <circle cx="28" cy="20" r="2.5" fill="currentColor" />
+      {/* Pico (V invertida) - más definido */}
       <path
         d="M22 24 L24 28 L26 24"
         stroke="currentColor"
-        strokeWidth="2.5"
+        strokeWidth="3"
         strokeLinecap="round"
-        strokeLinejoin="round"
+        strokeLinejoin="miter"
         fill="none"
       />
-      {/* Patrón de plumas en el pecho (V central y líneas) */}
+      {/* Patrón de plumas en el pecho - simplificado y más profesional */}
       <path
         d="M20 28 L24 32 L28 28"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="2.5"
         strokeLinecap="round"
-        strokeLinejoin="round"
+        strokeLinejoin="miter"
         fill="none"
       />
       <path
-        d="M18 30 L18 32 M22 30 L22 32 M26 30 L26 32 M30 30 L30 32"
+        d="M20 30 L24 32 L28 30"
         stroke="currentColor"
         strokeWidth="2"
         strokeLinecap="round"
+        fill="none"
       />
     </svg>
   );
@@ -1029,7 +1030,7 @@ function LogoOwl5({ size = 40 }: { size: number }) {
   );
 }
 
-// Variante ARROW1: A estilizada doble capa (estilo imagen - navy/silver)
+// Variante ARROW1: A estilizada doble capa (estilo imagen - navy/silver) - PROFESIONAL
 function LogoArrow1({ size = 40 }: { size: number }) {
   return (
     <svg
@@ -1039,21 +1040,22 @@ function LogoArrow1({ size = 40 }: { size: number }) {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      {/* Capa exterior (silver/gold) */}
+      {/* Capa exterior (silver/gold) - más sólida y profesional */}
       <path
         d="M24 4 L12 40 L24 36 L36 40 Z"
-        fill="hsl(var(--silver))"
+        fill="currentColor"
+        fillOpacity="0.15"
       />
-      {/* Capa interior (navy) */}
+      {/* Capa interior (navy) - más prominente */}
       <path
         d="M24 8 L16 36 L24 32 L32 36 Z"
-        fill="hsl(var(--navy))"
+        fill="currentColor"
       />
     </svg>
   );
 }
 
-// Variante ARROW2: A doble capa con base cerrada
+// Variante ARROW2: A doble capa con base cerrada - PROFESIONAL
 function LogoArrow2({ size = 40 }: { size: number }) {
   return (
     <svg
@@ -1066,20 +1068,21 @@ function LogoArrow2({ size = 40 }: { size: number }) {
       {/* Capa exterior con base */}
       <path
         d="M24 4 L12 40 L12 42 L36 42 L36 40 Z"
-        fill="hsl(var(--silver))"
+        fill="currentColor"
+        fillOpacity="0.15"
       />
       {/* Capa interior con base abierta */}
       <path
         d="M24 8 L16 36 L16 38 L32 38 L32 36 Z"
-        fill="hsl(var(--navy))"
+        fill="currentColor"
       />
       {/* Base visible de la capa exterior */}
-      <rect x="12" y="40" width="24" height="2" fill="hsl(var(--silver))" />
+      <rect x="12" y="40" width="24" height="2" fill="currentColor" fillOpacity="0.15" />
     </svg>
   );
 }
 
-// Variante ARROW3: A doble capa más angular y moderna
+// Variante ARROW3: A doble capa más angular y moderna - PROFESIONAL
 function LogoArrow3({ size = 40 }: { size: number }) {
   return (
     <svg
@@ -1092,18 +1095,19 @@ function LogoArrow3({ size = 40 }: { size: number }) {
       {/* Capa exterior más ancha */}
       <path
         d="M24 2 L10 42 L24 38 L38 42 Z"
-        fill="hsl(var(--silver))"
+        fill="currentColor"
+        fillOpacity="0.15"
       />
       {/* Capa interior más estrecha */}
       <path
         d="M24 6 L18 38 L24 34 L30 38 Z"
-        fill="hsl(var(--navy))"
+        fill="currentColor"
       />
     </svg>
   );
 }
 
-// Variante ARROW4: A con gradiente silver en exterior
+// Variante ARROW4: A con gradiente silver en exterior - PROFESIONAL
 function LogoArrow4({ size = 40 }: { size: number }) {
   return (
     <svg
@@ -1113,27 +1117,22 @@ function LogoArrow4({ size = 40 }: { size: number }) {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <defs>
-        <linearGradient id="silverGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="hsl(var(--silver-light))" />
-          <stop offset="100%" stopColor="hsl(var(--silver))" />
-        </linearGradient>
-      </defs>
-      {/* Capa exterior con gradiente */}
+      {/* Capa exterior con opacidad sutil */}
       <path
         d="M24 4 L12 40 L24 36 L36 40 Z"
-        fill="url(#silverGrad)"
+        fill="currentColor"
+        fillOpacity="0.12"
       />
-      {/* Capa interior navy sólido */}
+      {/* Capa interior sólida y profesional */}
       <path
         d="M24 8 L16 36 L24 32 L32 36 Z"
-        fill="hsl(var(--navy))"
+        fill="currentColor"
       />
     </svg>
   );
 }
 
-// Variante ARROW5: A doble capa invertida (navy exterior, silver interior)
+// Variante ARROW5: A doble capa invertida (navy exterior, silver interior) - PROFESIONAL
 function LogoArrow5({ size = 40 }: { size: number }) {
   return (
     <svg
@@ -1143,21 +1142,22 @@ function LogoArrow5({ size = 40 }: { size: number }) {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      {/* Capa exterior navy */}
+      {/* Capa exterior sólida */}
       <path
         d="M24 4 L12 40 L24 36 L36 40 Z"
-        fill="hsl(var(--navy))"
+        fill="currentColor"
       />
-      {/* Capa interior silver */}
+      {/* Capa interior con opacidad sutil */}
       <path
         d="M24 8 L16 36 L24 32 L32 36 Z"
-        fill="hsl(var(--silver))"
+        fill="currentColor"
+        fillOpacity="0.25"
       />
     </svg>
   );
 }
 
-// Variante ARROW6: A doble capa con sombra/efecto 3D
+// Variante ARROW6: A doble capa con sombra/efecto 3D - PROFESIONAL
 function LogoArrow6({ size = 40 }: { size: number }) {
   return (
     <svg
@@ -1167,22 +1167,23 @@ function LogoArrow6({ size = 40 }: { size: number }) {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      {/* Sombra/efecto 3D */}
+      {/* Sombra sutil y profesional */}
       <path
         d="M24 4 L12 40 L24 36 L36 40 Z"
-        fill="hsl(var(--navy-dark))"
-        opacity="0.3"
-        transform="translate(1, 1)"
+        fill="currentColor"
+        opacity="0.08"
+        transform="translate(0.5, 0.5)"
       />
       {/* Capa exterior */}
       <path
         d="M24 4 L12 40 L24 36 L36 40 Z"
-        fill="hsl(var(--silver))"
+        fill="currentColor"
+        fillOpacity="0.15"
       />
-      {/* Capa interior */}
+      {/* Capa interior sólida */}
       <path
         d="M24 8 L16 36 L24 32 L32 36 Z"
-        fill="hsl(var(--navy))"
+        fill="currentColor"
       />
     </svg>
   );
