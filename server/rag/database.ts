@@ -29,39 +29,16 @@ export function getPool(): pg.Pool {
 
     pool = new Pool({
       connectionString,
-      max: 5, // Reducido para evitar saturar Supabase
+      max: 3,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 120000, // Aumentado a 120 segundos
-      // Parámetros adicionales para Supabase
-      ssl: process.env.DATABASE_URL?.includes('supabase') ? { rejectUnauthorized: false } : undefined,
-      // Configuración adicional para Supabase pooler
+      connectionTimeoutMillis: 30000,
+      ssl: connectionString.includes('supabase') ? { rejectUnauthorized: false } : undefined,
       keepAlive: true,
       keepAliveInitialDelayMillis: 10000,
     });
 
-    // Configurar timeouts ilimitados en cada nueva conexión
-    pool.on('connect', async (client) => {
-      try {
-        await client.query("SET statement_timeout = 0");
-        await client.query("SET lock_timeout = 0");
-      } catch (error) {
-        // Ignorar errores al configurar (puede no tener permisos en algunos servicios)
-        console.warn("⚠️  No se pudo configurar statement_timeout:", error);
-      }
-    });
-
-    // Manejo de errores del pool - reconectar si es necesario
     pool.on("error", (err) => {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      // Si el error indica que la conexión se cerró, resetear el pool
-      if (errorMessage.includes("DbHandler exited") || 
-          errorMessage.includes("connection") ||
-          errorMessage.includes("XX000")) {
-        console.warn("⚠️  Error de conexión detectado, el pool se reseteará en el próximo uso");
-        pool = null; // Forzar recreación del pool en el próximo uso
-      } else {
-        console.error("Unexpected error on idle client", err);
-      }
+      console.error("Pool error:", err instanceof Error ? err.message : String(err));
     });
   }
 
@@ -272,44 +249,36 @@ export async function vectorSearch(
   minSimilarity: number = 0.5,
   efSearch: number = 64 // Parámetro HNSW: más alto = más preciso pero más lento
 ): Promise<VectorSearchResult[]> {
-  const maxRetries = 3;
+  const maxRetries = 2;
   let lastError: Error | null = null;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    const client = await getPool().connect();
+    let client;
+    try {
+      client = await getPool().connect();
+    } catch (connErr) {
+      console.error(`[vectorSearch] Error de conexión (intento ${attempt}/${maxRetries}):`, connErr instanceof Error ? connErr.message : connErr);
+      lastError = connErr as Error;
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        continue;
+      }
+      throw lastError;
+    }
 
     try {
-      // Optimización: Usar ef_search para controlar precisión/velocidad
-      // ef_search más alto = más preciso pero más lento
-      // Recomendado: 40-100 para balance óptimo
-      // 
-      // Query optimizada:
-      // 1. Configurar ef_search en la sesión
-      // 2. Ordenar primero (usa índice HNSW eficientemente)
-      // 3. Obtener más resultados de los necesarios para filtrar después
-      // 4. Filtrar por similitud mínima en memoria (más eficiente)
+      const fetchLimit = Math.min(limit * 3, 100);
       
-      // Configurar ef_search para esta sesión (opcional, puede fallar en algunos entornos)
-      // Nota: SET LOCAL solo funciona en transacciones, así que usamos SET sin LOCAL
-      // Validar que efSearch sea un número válido
-      const validEfSearch = Number.isInteger(efSearch) && efSearch > 0 ? efSearch : 64;
-      try {
-        await client.query(`SET hnsw.ef_search = ${validEfSearch}`);
-      } catch (setError) {
-        // Si falla el SET, continuar sin él (usará el valor por defecto)
-        console.warn(`[vectorSearch] No se pudo configurar ef_search, usando valor por defecto:`, setError);
-      }
-      
-      // Obtener más resultados de los necesarios para compensar el filtrado
-      const fetchLimit = Math.min(limit * 3, 100); // Obtener hasta 3x más o 100 máximo
-      
-      // Validar que el embedding sea un array válido
       if (!Array.isArray(queryEmbedding) || queryEmbedding.length === 0) {
         throw new Error("queryEmbedding debe ser un array no vacío");
       }
       
       const embeddingJson = JSON.stringify(queryEmbedding);
-      console.log(`[vectorSearch] Ejecutando búsqueda vectorial con embedding de ${queryEmbedding.length} dimensiones`);
+      console.log(`[vectorSearch] Ejecutando búsqueda vectorial (intento ${attempt})...`);
+      
+      await client.query("BEGIN");
+      await client.query("SET LOCAL statement_timeout = '60000'");
+      await client.query("SET LOCAL ivfflat.probes = 10");
       
       const result = await client.query(
         `SELECT 
@@ -324,11 +293,12 @@ export async function vectorSearch(
           t.organo_jurisdiccional
         FROM tesis_chunks c
         INNER JOIN tesis t ON c.tesis_id = t.id
-        WHERE c.embedding IS NOT NULL
         ORDER BY c.embedding <=> $1::vector
         LIMIT $2`,
         [embeddingJson, fetchLimit]
       );
+      
+      await client.query("COMMIT");
       
       // Filtrar por similitud mínima después de obtener resultados
       // Esto es más eficiente que filtrar en la query cuando hay muchos vectores
@@ -353,39 +323,21 @@ export async function vectorSearch(
       client.release();
       return filteredResults;
     } catch (error) {
-      if (client) {
-        try {
-          client.release();
-        } catch {
-          // Ignorar errores al liberar
-        }
-      }
+      try { await client.query("ROLLBACK"); } catch {}
+      try { client.release(); } catch {}
       
       lastError = error as Error;
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`[vectorSearch] Error (intento ${attempt}/${maxRetries}):`, error instanceof Error ? error.message : error);
       
-      // Si es error de conexión/autenticación, resetear pool y reintentar
-      if ((errorMessage.includes("DbHandler exited") || 
-           errorMessage.includes("connection") ||
-           errorMessage.includes("XX000") ||
-           errorMessage.includes("authentication") ||
-           errorMessage.includes("timeout") ||
-           errorMessage.includes("not available") ||
-           errorMessage.includes("08006")) && 
-          attempt < maxRetries) {
-        const waitTime = Math.pow(2, attempt) * 1000; // Exponential backoff: 1s, 2s, 4s
-        console.warn(`⚠️ Error de conexión en vectorSearch (intento ${attempt}/${maxRetries}), reintentando en ${waitTime}ms...`);
-        resetPool(); // Resetear pool para forzar nueva conexión
-        await new Promise(resolve => setTimeout(resolve, waitTime));
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
         continue;
       }
       
-      // Si no es error de conexión o ya agotamos reintentos, lanzar error
       throw error;
     }
   }
 
-  // Si llegamos aquí, todos los reintentos fallaron
   throw lastError || new Error("Error desconocido en vectorSearch");
 }
 
@@ -420,7 +372,9 @@ export async function fullTextSearch(
     const client = await getPool().connect();
 
     try {
-      // Usar to_tsquery para búsqueda en español
+      await client.query("BEGIN");
+      await client.query("SET LOCAL statement_timeout = '120000'");
+      
       const result = await client.query(
         `SELECT 
           c.id AS chunk_id,
@@ -439,6 +393,8 @@ export async function fullTextSearch(
         LIMIT $2`,
         [query, limit]
       );
+      
+      await client.query("COMMIT");
 
       const results = result.rows.map(row => ({
         chunkId: row.chunk_id,
@@ -455,12 +411,11 @@ export async function fullTextSearch(
       client.release();
       return results;
     } catch (error) {
+      try { await client.query("ROLLBACK"); } catch {}
       if (client) {
         try {
           client.release();
-        } catch {
-          // Ignorar errores al liberar
-        }
+        } catch {}
       }
       
       lastError = error as Error;

@@ -58,10 +58,11 @@ export async function retrieveRelevantTesis(
   query: string,
   config: RetrievalConfig = DEFAULT_RETRIEVAL_CONFIG
 ): Promise<RetrievedTesis[]> {
-  // Paso 1: Generar embedding de la query
+  console.log(`[retrieval] Paso 1: Generando embedding para query...`);
   const queryEmbedding = await generateEmbedding(query);
+  console.log(`[retrieval] Embedding generado (${queryEmbedding.length} dimensiones)`);
 
-  // Paso 2: Búsqueda híbrida
+  console.log(`[retrieval] Paso 2: Ejecutando búsqueda híbrida...`);
   const searchResults = await hybridSearch(
     queryEmbedding,
     query,
