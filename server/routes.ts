@@ -9,6 +9,24 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
+  // Verificar configuración al iniciar
+  const apiKey = process.env.OPENAI_API_KEY;
+  console.log("\n" + "=".repeat(60));
+  console.log("🔍 DIAGNÓSTICO DE CONFIGURACIÓN OPENAI");
+  console.log("=".repeat(60));
+  console.log(`OPENAI_API_KEY: ${apiKey ? `✅ Configurada (${apiKey.length} caracteres, formato: ${apiKey.startsWith("sk-") ? "correcto" : "⚠️  posiblemente incorrecto"})` : "❌ NO CONFIGURADA"}`);
+  console.log(`EMBEDDING_PROVIDER: ${process.env.EMBEDDING_PROVIDER || "openai (default)"}`);
+  console.log(`EMBEDDING_MODEL: ${process.env.EMBEDDING_MODEL || "text-embedding-3-small (default)"}`);
+  if (!apiKey) {
+    console.log("\n⚠️  ADVERTENCIA: OPENAI_API_KEY no está configurada");
+    console.log("   Esto causará errores al intentar generar respuestas con IA");
+    console.log("   Solución: Agrega OPENAI_API_KEY=sk-tu-api-key en tu archivo .env");
+  } else if (!apiKey.startsWith("sk-")) {
+    console.log("\n⚠️  ADVERTENCIA: La API key no tiene el formato esperado");
+    console.log("   Las API keys de OpenAI normalmente empiezan con 'sk-'");
+  }
+  console.log("=".repeat(60) + "\n");
+  
   app.post("/api/analyze", async (req, res) => {
     try {
       const parsed = analyzeRequestSchema.safeParse(req.body);
@@ -146,6 +164,38 @@ export async function registerRoutes(
   });
 
   // ============================================================================
+  // DIAGNOSTIC ENDPOINT: /api/check-config
+  // ============================================================================
+  app.get("/api/check-config", async (req, res) => {
+    const apiKey = process.env.OPENAI_API_KEY;
+    const embeddingProvider = process.env.EMBEDDING_PROVIDER || "openai";
+    const embeddingModel = process.env.EMBEDDING_MODEL || "text-embedding-3-small";
+    
+    const config = {
+      openaiApiKey: {
+        configured: !!apiKey,
+        format: apiKey ? (apiKey.startsWith("sk-") ? "correcto" : "posiblemente incorrecto (debería empezar con 'sk-')") : "no configurada",
+        length: apiKey ? apiKey.length : 0,
+        preview: apiKey ? `${apiKey.substring(0, 7)}...${apiKey.substring(apiKey.length - 4)}` : "N/A"
+      },
+      embedding: {
+        provider: embeddingProvider,
+        model: embeddingModel
+      },
+      recommendations: [] as string[]
+    };
+    
+    if (!apiKey) {
+      config.recommendations.push("Agrega OPENAI_API_KEY=sk-tu-api-key-aqui en tu archivo .env");
+    } else if (!apiKey.startsWith("sk-")) {
+      config.recommendations.push("La API key no tiene el formato esperado. Verifica que sea una key válida de OpenAI");
+    } else if (apiKey.length < 20) {
+      config.recommendations.push("La API key parece muy corta. Verifica que sea completa");
+    }
+    
+    return res.json(config);
+  });
+
   // RAG ENDPOINT: /api/ask
   // ============================================================================
   app.post("/api/ask", async (req, res) => {
@@ -179,6 +229,7 @@ export async function registerRoutes(
           tesisFound: response.tesisUsed?.length || 0,
           confidence: response.confidence || "low",
           hasEvidence: response.hasEvidence || false,
+          tokenUsage: response.tokenUsage,
         });
         console.log(`[API /ask] Registro de consulta completado`);
       } catch (logError) {
@@ -202,12 +253,23 @@ export async function registerRoutes(
           tesisFound: 0,
           confidence: "low",
           hasEvidence: false,
+          tokenUsage: undefined, // No hay tokens si hay error
         });
       } catch (logError) {
         // Ignorar errores de logging
       }
       
-      console.error("Error in /api/ask:", error);
+      // Log detallado del error
+      console.error("=".repeat(60));
+      console.error("[API /ask] ERROR al procesar pregunta:");
+      console.error("Pregunta:", req.body?.question);
+      console.error("Error:", error);
+      if (error instanceof Error) {
+        console.error("Mensaje:", error.message);
+        console.error("Stack:", error.stack);
+      }
+      console.error("=".repeat(60));
+      
       return res.status(500).json({ 
         error: "Error al procesar la pregunta",
         message: error instanceof Error ? error.message : String(error)

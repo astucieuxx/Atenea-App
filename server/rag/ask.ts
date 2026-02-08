@@ -51,6 +51,11 @@ export interface AskResponse {
   }>;
   hasEvidence: boolean;
   confidence: "high" | "medium" | "low";
+  tokenUsage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
 }
 
 // ============================================================================
@@ -60,11 +65,19 @@ export interface AskResponse {
 async function generateAnswerWithLLM(
   question: string,
   retrievedTesis: RetrievedTesis[]
-): Promise<string> {
+): Promise<{ answer: string; tokenUsage: { promptTokens: number; completionTokens: number; totalTokens: number } }> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
+    console.error("[generateAnswerWithLLM] ERROR: OPENAI_API_KEY no está configurada");
     throw new Error("OPENAI_API_KEY environment variable is required");
   }
+  
+  // Verificar que la API key tenga el formato correcto
+  if (!apiKey.startsWith('sk-')) {
+    console.warn("[generateAnswerWithLLM] WARNING: La API key no parece tener el formato correcto (debería empezar con 'sk-')");
+  }
+  
+  console.log("[generateAnswerWithLLM] API Key configurada (primeros 10 caracteres):", apiKey.substring(0, 10) + "...");
 
   // Construir contexto con tesis recuperadas (optimizado: menos texto por tesis)
   const tesisContext = retrievedTesis
@@ -199,32 +212,150 @@ INSTRUCCIONES:
 6. Si faltan tesis, indícalo en la Respuesta Ejecutiva.`;
 
   try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 0.2, // Muy bajo para respuestas más deterministas y profesionales
-        max_tokens: 1200, // Optimizado para respuestas más rápidas sin sacrificar calidad
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: "Unknown error" }));
-      throw new Error(`OpenAI API error: ${JSON.stringify(error)}`);
+    // Limpiar la API key (eliminar espacios al inicio/final)
+    const cleanApiKey = apiKey.trim();
+    if (cleanApiKey !== apiKey) {
+      console.warn("[generateAnswerWithLLM] La API key tenía espacios, se limpiaron automáticamente");
     }
+    
+    console.log("[generateAnswerWithLLM] Enviando petición a OpenAI API...");
+    console.log("[generateAnswerWithLLM] URL: https://api.openai.com/v1/chat/completions");
+    console.log("[generateAnswerWithLLM] Model: gpt-4o-mini");
+    
+    // Crear un AbortController para timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 segundos timeout
+    
+    try {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${cleanApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          temperature: 0.2, // Muy bajo para respuestas más deterministas y profesionales
+          max_tokens: 1200, // Optimizado para respuestas más rápidas sin sacrificar calidad
+        }),
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
 
-    const data = await response.json();
-    return data.choices[0]?.message?.content || "No se pudo generar una respuesta.";
+      console.log("[generateAnswerWithLLM] Respuesta recibida, status:", response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { error: errorText };
+        }
+        
+        console.error("[generateAnswerWithLLM] ERROR de API:");
+        console.error("  Status:", response.status, response.statusText);
+        console.error("  Error completo:", JSON.stringify(errorData, null, 2));
+        console.error("  Headers de respuesta:", Object.fromEntries(response.headers.entries()));
+        
+        // Errores específicos de autenticación
+        if (response.status === 401 || response.status === 403) {
+          const errorMsg = errorData.error?.message || errorData.error?.code || errorData.error || 'API key inválida o expirada';
+          console.error("[generateAnswerWithLLM] ERROR DE AUTENTICACIÓN:");
+          console.error("  - Verifica que la API key sea válida y no esté expirada");
+          console.error("  - Verifica que tengas créditos disponibles en tu cuenta de OpenAI");
+          console.error("  - Verifica que la API key tenga los permisos necesarios");
+          throw new Error(`Error de autenticación con OpenAI: ${errorMsg}`);
+        }
+        
+        // Error de conexión
+        if (response.status === 0 || errorText.includes("connection") || errorText.includes("network")) {
+          console.error("[generateAnswerWithLLM] ERROR DE CONEXIÓN:");
+          console.error("  - Verifica tu conexión a internet");
+          console.error("  - Verifica que puedas acceder a api.openai.com");
+          throw new Error(`Error de conexión con OpenAI: ${errorData.error?.message || errorData.error || 'No se pudo conectar con la API'}`);
+        }
+        
+        throw new Error(`OpenAI API error (${response.status}): ${errorData.error?.message || JSON.stringify(errorData)}`);
+      }
+
+      const data = await response.json();
+      const answer = data.choices[0]?.message?.content || "No se pudo generar una respuesta.";
+    
+    // Log completo de la respuesta para debug
+    console.log("[generateAnswerWithLLM] Full API response keys:", Object.keys(data));
+    console.log("[generateAnswerWithLLM] Usage field exists:", !!data.usage);
+    console.log("[generateAnswerWithLLM] Usage field value:", JSON.stringify(data.usage, null, 2));
+    
+    // Extraer información de tokens de la respuesta
+    // La API de OpenAI siempre debería incluir 'usage', pero verificamos por si acaso
+    let tokenUsage;
+    if (data.usage) {
+      tokenUsage = {
+        promptTokens: data.usage.prompt_tokens || 0,
+        completionTokens: data.usage.completion_tokens || 0,
+        totalTokens: data.usage.total_tokens || 0,
+      };
+    } else {
+      // Si no hay usage, intentar calcular aproximado o usar valores por defecto
+      console.warn("[generateAnswerWithLLM] WARNING: API response does not include 'usage' field");
+      tokenUsage = {
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+      };
+    }
+    
+    // Log para debug
+    console.log("[generateAnswerWithLLM] Extracted token usage:", tokenUsage);
+    
+      return { answer, tokenUsage };
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      
+      // Manejar errores de abort (timeout)
+      if (fetchError.name === 'AbortError') {
+        console.error("[generateAnswerWithLLM] ERROR: Timeout al conectar con OpenAI (60 segundos)");
+        throw new Error("Timeout al conectar con OpenAI. Verifica tu conexión a internet.");
+      }
+      
+      // Manejar errores de conexión
+      if (fetchError.message?.includes("fetch failed") || 
+          fetchError.message?.includes("ECONNREFUSED") ||
+          fetchError.message?.includes("ENOTFOUND") ||
+          fetchError.message?.includes("connection")) {
+        console.error("[generateAnswerWithLLM] ERROR DE CONEXIÓN:");
+        console.error("  Mensaje:", fetchError.message);
+        console.error("  Stack:", fetchError.stack);
+        console.error("  Posibles causas:");
+        console.error("    - Problema de conexión a internet");
+        console.error("    - Firewall bloqueando api.openai.com");
+        console.error("    - Proxy o VPN interfiriendo");
+        throw new Error(`Error de conexión con OpenAI: ${fetchError.message || 'No se pudo establecer conexión'}`);
+      }
+      
+      // Re-lanzar otros errores
+      throw fetchError;
+    }
   } catch (error) {
-    console.error("Error generating answer with LLM:", error);
+    console.error("[generateAnswerWithLLM] ERROR capturado:", error);
+    if (error instanceof Error) {
+      console.error("[generateAnswerWithLLM] Error message:", error.message);
+      console.error("[generateAnswerWithLLM] Error stack:", error.stack);
+      
+      // Si es un error de autenticación, dar más información
+      if (error.message.includes("autenticación") || error.message.includes("401") || error.message.includes("403")) {
+        console.error("[generateAnswerWithLLM] PROBLEMA DE AUTENTICACIÓN DETECTADO:");
+        console.error("  - Verifica que OPENAI_API_KEY esté configurada correctamente en el archivo .env");
+        console.error("  - Verifica que la API key sea válida y no esté expirada");
+        console.error("  - Verifica que tengas créditos disponibles en tu cuenta de OpenAI");
+      }
+    }
     throw error;
   }
 }
@@ -275,17 +406,34 @@ export async function askQuestion(
 
   // Paso 3: Generar respuesta (con LLM o sin él)
   let answer: string;
+  let tokenUsage: { promptTokens: number; completionTokens: number; totalTokens: number } | undefined;
   
   if (config.useLLM) {
     try {
-      answer = await generateAnswerWithLLM(question, tesisToUse);
+      const llmResult = await generateAnswerWithLLM(question, tesisToUse);
+      answer = llmResult.answer;
+      tokenUsage = llmResult.tokenUsage;
+      console.log("[askQuestion] Token usage received:", tokenUsage);
     } catch (error) {
-      console.error("Error generating answer, falling back to simple format:", error);
+      console.error("[askQuestion] Error generating answer with LLM, falling back to simple format");
+      console.error("[askQuestion] Error details:", error instanceof Error ? error.message : String(error));
       // Fallback: respuesta simple sin LLM
       answer = generateSimpleAnswer(question, tesisToUse);
+      // Agregar nota sobre el error al inicio de la respuesta
+      answer = `⚠️ No se pudo generar una respuesta con IA debido a un error de conexión. Mostrando tesis encontradas:\n\n${answer}`;
+      tokenUsage = {
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+      };
     }
   } else {
     answer = generateSimpleAnswer(question, tesisToUse);
+    tokenUsage = {
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+    };
   }
 
   // Paso 4: Determinar confianza basada en las tesis usadas
@@ -313,12 +461,25 @@ export async function askQuestion(
     relevanceScore: rt.relevanceScore,
   }));
 
-  return {
+  // Asegurar que tokenUsage siempre esté presente (incluso si es undefined, lo convertimos a un objeto con 0s)
+  const finalTokenUsage = tokenUsage || {
+    promptTokens: 0,
+    completionTokens: 0,
+    totalTokens: 0,
+  };
+  
+  const response = {
     answer,
     tesisUsed,
     hasEvidence: finalHasEvidence,
     confidence,
+    tokenUsage: finalTokenUsage,
   };
+  
+  console.log("[askQuestion] Final response with tokenUsage:", JSON.stringify(response, null, 2));
+  console.log("[askQuestion] TokenUsage type:", typeof tokenUsage, "value:", tokenUsage);
+  
+  return response;
 }
 
 // ============================================================================

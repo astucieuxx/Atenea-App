@@ -9,14 +9,45 @@ import * as fs from "fs";
 import * as path from "path";
 
 const CSV_FILE_PATH = path.join(process.cwd(), "rag_queries_log.csv");
-const CSV_HEADER = "fecha,tiempo_utc,pregunta,tiempo_respuesta_segundos,tiempo_respuesta_ms,tesis_encontradas,confianza,con_evidencia\n";
+const CSV_HEADER = "fecha,tiempo_utc,pregunta,tiempo_respuesta_segundos,tiempo_respuesta_ms,tesis_encontradas,confianza,con_evidencia,tokens_prompt,tokens_completion,tokens_total\n";
 
 /**
- * Inicializa el archivo CSV si no existe
+ * Inicializa el archivo CSV si no existe o actualiza el header si es necesario
  */
 function ensureCSVFile() {
   if (!fs.existsSync(CSV_FILE_PATH)) {
+    // Crear archivo nuevo con el header completo
     fs.writeFileSync(CSV_FILE_PATH, CSV_HEADER, "utf-8");
+  } else {
+    // Verificar si el header tiene las columnas de tokens
+    const content = fs.readFileSync(CSV_FILE_PATH, "utf-8");
+    const firstLine = content.split('\n')[0];
+    
+    // Si el header no incluye tokens_total, necesitamos actualizarlo
+    if (!firstLine.includes("tokens_total")) {
+      console.log("[Query Logger] Actualizando header del CSV para incluir información de tokens");
+      
+      // Leer todas las líneas existentes
+      const lines = content.split('\n').filter(line => line.trim().length > 0);
+      
+      // Si hay datos, necesitamos agregar columnas vacías a las filas existentes
+      if (lines.length > 1) {
+        const updatedLines = lines.map((line, index) => {
+          if (index === 0) {
+            // Actualizar el header
+            return CSV_HEADER.trim();
+          } else {
+            // Agregar columnas vacías (0) para tokens en filas existentes
+            return line + ",0,0,0";
+          }
+        });
+        
+        fs.writeFileSync(CSV_FILE_PATH, updatedLines.join('\n') + '\n', "utf-8");
+      } else {
+        // Solo hay header, actualizarlo
+        fs.writeFileSync(CSV_FILE_PATH, CSV_HEADER, "utf-8");
+      }
+    }
   }
 }
 
@@ -40,6 +71,11 @@ export function logQuery(params: {
   tesisFound: number;
   confidence: "high" | "medium" | "low";
   hasEvidence: boolean;
+  tokenUsage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
 }): void {
   try {
     console.log(`[Query Logger] Intentando registrar consulta en: ${CSV_FILE_PATH}`);
@@ -57,6 +93,11 @@ export function logQuery(params: {
     // Escapar la pregunta para CSV
     const preguntaEscapada = escapeCSVValue(params.question);
     
+    // Obtener información de tokens (si está disponible)
+    const tokensPrompt = params.tokenUsage?.promptTokens?.toString() || "0";
+    const tokensCompletion = params.tokenUsage?.completionTokens?.toString() || "0";
+    const tokensTotal = params.tokenUsage?.totalTokens?.toString() || "0";
+    
     // Construir la línea CSV
     const csvLine = [
       fecha,
@@ -66,7 +107,10 @@ export function logQuery(params: {
       tiempoMs,
       params.tesisFound.toString(),
       params.confidence,
-      params.hasEvidence ? "true" : "false"
+      params.hasEvidence ? "true" : "false",
+      tokensPrompt,
+      tokensCompletion,
+      tokensTotal
     ].join(",") + "\n";
 
     // Agregar al final del archivo (append)

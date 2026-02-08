@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowRight, Loader2, FileText, Sparkles, AlertTriangle, CheckCircle2, BookOpen, Search } from "lucide-react";
+import { ArrowRight, Loader2, FileText, Sparkles, AlertTriangle, BookOpen, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -322,6 +322,10 @@ export default function Ask() {
       
       const response = await apiRequest("POST", "/api/ask", data);
       
+      // Log para debug
+      console.log("[Ask Page] Response received:", response);
+      console.log("[Ask Page] Token usage:", (response as AskResponse).tokenUsage);
+      
       const end = Date.now();
       const totalSeconds = ((end - start) / 1000);
       setTotalTimeSeconds(totalSeconds);
@@ -594,40 +598,34 @@ export default function Ask() {
                         <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
                         {t('search.answer')}
                       </CardTitle>
-                      {/* Tiempo total de generación */}
-                      {totalTimeSeconds !== null && (
-                        <p className="text-[10px] text-muted-foreground/60 font-serif tracking-wide ml-8">
-                          {totalTimeSeconds < 60 
-                            ? `Generada en ${totalTimeSeconds.toFixed(1)} segundos`
-                            : `Generada en ${Math.floor(totalTimeSeconds / 60)} minuto${Math.floor(totalTimeSeconds / 60) > 1 ? 's' : ''} ${(totalTimeSeconds % 60).toFixed(1)} segundo${(totalTimeSeconds % 60).toFixed(1) !== '1.0' ? 's' : ''}`
-                          }
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Badge
-                        variant={
-                          result.confidence === "high"
-                            ? "default"
-                            : result.confidence === "medium"
-                            ? "secondary"
-                            : "outline"
-                        }
-                        className="font-serif"
-                      >
-                        {t('search.confidence')}: {result.confidence === "high" ? t('search.confidence.high') : result.confidence === "medium" ? t('search.confidence.medium') : t('search.confidence.low')}
-                      </Badge>
-                      {result.hasEvidence ? (
-                        <Badge variant="default" className="gap-1 font-serif">
-                          <CheckCircle2 className="h-3 w-3" />
-                          {t('search.withEvidence')}
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="gap-1 font-serif">
-                          <AlertTriangle className="h-3 w-3" />
-                          {t('search.withoutEvidence')}
-                        </Badge>
-                      )}
+                      {/* Tiempo total de generación y tokens usados */}
+                      <div className="flex flex-col gap-0.5 ml-8 mt-1">
+                        {totalTimeSeconds !== null && (
+                          <p className="text-[10px] text-muted-foreground/60 font-serif tracking-wide">
+                            {totalTimeSeconds < 60 
+                              ? `Generada en ${totalTimeSeconds.toFixed(1)} segundos`
+                              : `Generada en ${Math.floor(totalTimeSeconds / 60)} minuto${Math.floor(totalTimeSeconds / 60) > 1 ? 's' : ''} ${(totalTimeSeconds % 60).toFixed(1)} segundo${(totalTimeSeconds % 60).toFixed(1) !== '1.0' ? 's' : ''}`
+                            }
+                          </p>
+                        )}
+                        {result.tokenUsage ? (
+                          result.tokenUsage.totalTokens > 0 ? (
+                            <p className="text-[10px] text-muted-foreground/60 font-serif tracking-wide">
+                              Tokens: {result.tokenUsage.totalTokens.toLocaleString()} 
+                              {' '}(prompt: {result.tokenUsage.promptTokens.toLocaleString()}, 
+                              {' '}completion: {result.tokenUsage.completionTokens.toLocaleString()})
+                            </p>
+                          ) : (
+                            <p className="text-[10px] text-muted-foreground/40 font-serif tracking-wide italic">
+                              (Tokens: 0 - La API no devolvió información de uso)
+                            </p>
+                          )
+                        ) : (
+                          <p className="text-[10px] text-muted-foreground/40 font-serif tracking-wide italic">
+                            (Información de tokens no disponible)
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </CardHeader>

@@ -248,8 +248,14 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     return translations[language][key] || key;
   };
 
+  // Memoizar el valor del contexto para evitar recreaciones innecesarias
+  const contextValue = React.useMemo(
+    () => ({ language, setLanguage, t }),
+    [language]
+  );
+
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t }}>
+    <LanguageContext.Provider value={contextValue}>
       {children}
     </LanguageContext.Provider>
   );
@@ -257,7 +263,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
 export function useLanguage() {
   const context = useContext(LanguageContext);
-  if (context === undefined) {
+  if (!context) {
+    // En desarrollo, dar más información sobre el error
+    if (process.env.NODE_ENV === 'development') {
+      console.error('useLanguage called outside LanguageProvider. Make sure LanguageProvider wraps your component tree.');
+    }
     throw new Error('useLanguage must be used within a LanguageProvider');
   }
   return context;

@@ -146,6 +146,11 @@ export interface AskResponse {
   }>;
   hasEvidence: boolean;
   confidence: "high" | "medium" | "low";
+  tokenUsage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
 }
 
 // API response types
