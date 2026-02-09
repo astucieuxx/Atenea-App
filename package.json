@@ -23,7 +23,9 @@
     "scrape:discover": "tsx script/discover-api.ts",
     "scrape:precedentes": "tsx script/scrape-precedentes.ts",
     "scrape:precedentes:resume": "tsx script/scrape-precedentes.ts --resume",
-    "remap:precedentes": "tsx script/remap-precedentes.ts"
+    "remap:precedentes": "tsx script/remap-precedentes.ts",
+    "rag:ingest:precedentes": "tsx script/ingest-precedentes.ts",
+    "rag:ingest:precedentes:resume": "tsx script/ingest-precedentes.ts --resume"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
