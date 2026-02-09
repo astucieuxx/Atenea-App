@@ -406,32 +406,28 @@ export default function Ask() {
     return () => clearInterval(interval);
   }, [mutation.isPending, startTime]);
 
-  // Ejecutar búsqueda automática SOLO al montar el componente si la pregunta vino de la landing page
+  // Ejecutar búsqueda automática SOLO si viene de la landing page con pendingSearch flag
   useEffect(() => {
-    // Solo ejecutar una vez al montar, si hay una pregunta válida y no hay resultado guardado
-    if (question.trim().length >= 10 && !autoSearchExecuted && !savedResult && !mutation.isPending && !mutation.data) {
-      // Verificar si la pregunta es nueva (no tiene resultado guardado)
-      const saved = localStorage.getItem(STORAGE_KEY);
-      let isNewQuestion = true;
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return;
 
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (parsed.question && parsed.question.trim() === question.trim() && parsed.result) {
-            isNewQuestion = false;
-          }
-        } catch {
-          // Ignorar errores
-        }
-      }
-
-      if (isNewQuestion) {
+    try {
+      const parsed = JSON.parse(saved);
+      // Solo auto-ejecutar si la landing page marcó pendingSearch
+      if (parsed.pendingSearch && parsed.question?.trim().length >= 10) {
+        // Eliminar el flag para que no se vuelva a ejecutar
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          ...parsed,
+          pendingSearch: false,
+        }));
         setAutoSearchExecuted(true);
         setElapsedSeconds(0);
         setTotalTimeSeconds(null);
         setStartTime(null);
-        mutation.mutate({ question: question.trim() });
+        mutation.mutate({ question: parsed.question.trim() });
       }
+    } catch {
+      // Ignorar errores
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Solo ejecutar al montar
