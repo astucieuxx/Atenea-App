@@ -75,17 +75,16 @@ interface Ejecutoria {
   ius: number;
   rubro: string;
   localizacion: string;
-  instancia: string;
-  epoca: string;
-  fuente: string;
-  materia: string;
   sala: string;
-  tipo_documento: string;
+  tipo_asunto: string;
+  tipo_asunto_expediente: string;
+  promovente: string;
+  texto_publicacion: string;
   fecha_publicacion: string;
-  fecha_resolucion: string;
-  contenido: string;
-  notas: string;
-  tesis_relacionadas: string[];
+  temas: string[];
+  votos: any[];
+  votacion: boolean;
+  semanal: boolean;
   url_origen: string;
   raw_fields: Record<string, any>;
   scraped_at: string;
@@ -258,13 +257,12 @@ async function fetchDetail(
 function mapToEjecutoria(raw: RawDocument, detail?: Record<string, any> | null): Ejecutoria {
   const merged = detail ? { ...raw, ...detail } : raw;
 
-  // Extract known fields, keeping unknown ones in raw_fields
+  // Fields we explicitly map
   const knownKeys = new Set([
-    "id", "ius", "rubro", "localizacion", "instancia", "epoca",
-    "fuente", "materia", "sala", "tipoDocumento", "tipo",
-    "fechaPublicacion", "fechaResolucion", "fecha",
-    "contenido", "texto", "text", "body",
-    "notas", "tesis", "tesisRelacionadas",
+    "id", "ius", "rubro", "localizacion", "sala",
+    "tipoAsunto", "tipoAsuntoE", "promovente",
+    "textoPublicacion", "fechaPublicacion",
+    "themes", "votos", "votacion", "semanal",
   ]);
 
   const rawFields: Record<string, any> = {};
@@ -277,21 +275,18 @@ function mapToEjecutoria(raw: RawDocument, detail?: Record<string, any> | null):
   return {
     id: String(merged.id || merged.ius || ""),
     ius: merged.ius ?? (parseInt(merged.id, 10) || 0),
-    rubro: merged.rubro || merged.titulo || merged.title || "",
-    localizacion: merged.localizacion || merged.loc || "",
-    instancia: merged.instancia || merged.organo || "",
-    epoca: merged.epoca || "",
-    fuente: merged.fuente || "",
-    materia: Array.isArray(merged.materia)
-      ? merged.materia.join(", ")
-      : merged.materia || merged.materias || "",
+    rubro: (merged.rubro || "").trim(),
+    localizacion: merged.localizacion || "",
     sala: merged.sala || "",
-    tipo_documento: merged.tipoDocumento || merged.tipo || "",
+    tipo_asunto: merged.tipoAsunto || "",
+    tipo_asunto_expediente: merged.tipoAsuntoE || "",
+    promovente: merged.promovente || "",
+    texto_publicacion: merged.textoPublicacion || "",
     fecha_publicacion: merged.fechaPublicacion || "",
-    fecha_resolucion: merged.fechaResolucion || merged.fecha || "",
-    contenido: merged.contenido || merged.texto || merged.text || merged.body || "",
-    notas: merged.notas || "",
-    tesis_relacionadas: merged.tesisRelacionadas || merged.tesis || [],
+    temas: Array.isArray(merged.themes) ? merged.themes : [],
+    votos: Array.isArray(merged.votos) ? merged.votos : [],
+    votacion: merged.votacion ?? false,
+    semanal: merged.semanal === 1 || merged.semanal === true,
     url_origen: `${BASE_URL}/detalle/ejecutoria/${merged.ius || merged.id}`,
     raw_fields: rawFields,
     scraped_at: new Date().toISOString(),
