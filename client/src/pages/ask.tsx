@@ -313,25 +313,8 @@ export default function Ask() {
     return "";
   });
   
-  // Estado para guardar el resultado restaurado
-  const [savedResult, setSavedResult] = useState<AskResponse | null>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          // Solo restaurar si tiene menos de 1 hora de antigüedad
-          const oneHour = 60 * 60 * 1000;
-          if (parsed.timestamp && Date.now() - parsed.timestamp < oneHour && parsed.result) {
-            return parsed.result;
-          }
-        } catch {
-          // Ignorar errores
-        }
-      }
-    }
-    return null;
-  });
+  // Estado para guardar el resultado (solo se llena después de una búsqueda exitosa)
+  const [savedResult, setSavedResult] = useState<AskResponse | null>(null);
   
   // Estados para el contador de tiempo
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -424,8 +407,8 @@ export default function Ask() {
     }
   }, [question]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSearch = () => {
+    console.log("[Ask] handleSearch called explicitly by user action");
     if (question.trim().length < 10) {
       toast({
         title: t('search.questionTooShort'),
@@ -482,7 +465,7 @@ export default function Ask() {
           {/* Search Form */}
           <Card className="border-border bg-card shadow-sm animate-fade-up" style={{ animationDelay: '0.2s' }}>
             <CardContent className="p-6 sm:p-8 lg:p-10">
-              <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+              <div className="space-y-4 sm:space-y-5">
                 <div className="space-y-3">
                   <label htmlFor="question-input" className="text-base sm:text-lg font-serif font-semibold text-foreground">
                     {t('search.questionLabel')}
@@ -505,8 +488,8 @@ export default function Ask() {
                           <div className="absolute inset-0 w-2 h-2 rounded-full bg-primary/40 animate-ping"></div>
                         </div>
                         <span className="text-xs font-mono font-medium text-foreground/80 tabular-nums tracking-wider">
-                          {elapsedSeconds < 60 
-                            ? `${elapsedSeconds.toFixed(1)}s` 
+                          {elapsedSeconds < 60
+                            ? `${elapsedSeconds.toFixed(1)}s`
                             : `${Math.floor(elapsedSeconds / 60)}m ${(elapsedSeconds % 60).toFixed(1)}s`
                           }
                         </span>
@@ -515,11 +498,12 @@ export default function Ask() {
                   )}
                   <div className="flex justify-end w-full sm:w-auto">
                     <Button
-                      type="submit"
+                      type="button"
                       size="default"
                       variant="navy"
                       className="gap-2 text-sm font-serif px-6"
                       disabled={mutation.isPending || question.trim().length < 10}
+                      onClick={handleSearch}
                     >
                     {mutation.isPending ? (
                       <>
@@ -536,7 +520,7 @@ export default function Ask() {
                     </Button>
                   </div>
                 </div>
-              </form>
+              </div>
 
               {/* Example Questions - Solo mostrar si NO hay resultado */}
               {showExamples && (
