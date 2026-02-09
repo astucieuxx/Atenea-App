@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowRight, Loader2, FileText, Sparkles, AlertTriangle, BookOpen, Search } from "lucide-react";
+import { ArrowRight, Loader2, FileText, Sparkles, AlertTriangle, BookOpen, Search, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -257,6 +257,36 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
   );
 }
 
+// Componente de botón para copiar cita formal
+function CopyCitationButton({ text, label }: { text: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <Button variant="outline" size="sm" className="gap-2 font-serif" onClick={handleCopy}>
+      {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+      {copied ? "Copiado" : label}
+    </Button>
+  );
+}
+
 const EXAMPLE_QUESTIONS = [
   "¿Qué es el amparo directo?",
   "¿Cuándo procede la suspensión en juicio de amparo?",
@@ -375,18 +405,17 @@ export default function Ask() {
     return () => clearInterval(interval);
   }, [mutation.isPending, startTime]);
 
-  // Ejecutar búsqueda automática si hay una pregunta nueva desde la landing page
+  // Ejecutar búsqueda automática SOLO al montar el componente si la pregunta vino de la landing page
   useEffect(() => {
-    // Solo ejecutar si hay una pregunta válida, no se ha ejecutado antes, y no hay resultado guardado
+    // Solo ejecutar una vez al montar, si hay una pregunta válida y no hay resultado guardado
     if (question.trim().length >= 10 && !autoSearchExecuted && !savedResult && !mutation.isPending && !mutation.data) {
       // Verificar si la pregunta es nueva (no tiene resultado guardado)
       const saved = localStorage.getItem(STORAGE_KEY);
       let isNewQuestion = true;
-      
+
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          // Si la pregunta coincide con la guardada y hay resultado, no ejecutar
           if (parsed.question && parsed.question.trim() === question.trim() && parsed.result) {
             isNewQuestion = false;
           }
@@ -394,18 +423,17 @@ export default function Ask() {
           // Ignorar errores
         }
       }
-      
-      // Si es una pregunta nueva, ejecutar búsqueda automáticamente
+
       if (isNewQuestion) {
         setAutoSearchExecuted(true);
-        // Resetear contador antes de iniciar búsqueda automática
         setElapsedSeconds(0);
         setTotalTimeSeconds(null);
         setStartTime(null);
         mutation.mutate({ question: question.trim() });
       }
     }
-  }, [question, autoSearchExecuted, savedResult, mutation.isPending, mutation.data]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Solo ejecutar al montar
 
   // Limpiar resultado guardado si la pregunta cambia y no coincide con la guardada
   useEffect(() => {
@@ -417,7 +445,6 @@ export default function Ask() {
           // Si la pregunta actual no coincide con la guardada, limpiar resultado
           if (parsed.question && parsed.question.trim() !== question.trim()) {
             setSavedResult(null);
-            setAutoSearchExecuted(false); // Permitir nueva búsqueda automática
           }
         } catch {
           // Ignorar errores
@@ -425,11 +452,7 @@ export default function Ask() {
       } else {
         // Si no hay datos guardados, limpiar resultado
         setSavedResult(null);
-        setAutoSearchExecuted(false);
       }
-    } else if (!question.trim() && savedResult) {
-      // Si la pregunta está vacía, mantener el resultado (puede ser que el usuario solo esté editando)
-      // No hacer nada
     }
   }, [question]);
 
@@ -679,13 +702,32 @@ export default function Ask() {
                                 </p>
                               )}
 
-                              {/* Botón para ver detalle */}
-                              <div className="mt-4 pt-4 border-t border-border">
+                              {/* Cita formal expandible */}
+                              {item.formalCitation && (
+                                <details className="group">
+                                  <summary className="cursor-pointer text-sm text-primary font-serif hover:underline">
+                                    {t('search.showFormalCitation')}
+                                  </summary>
+                                  <div className="mt-2 p-3 bg-muted/50 rounded-md border border-border">
+                                    <pre className="text-xs sm:text-sm text-foreground font-serif whitespace-pre-wrap leading-relaxed">
+                                      {item.formalCitation}
+                                    </pre>
+                                  </div>
+                                </details>
+                              )}
+
+                              {/* Botones de acción */}
+                              <div className="mt-4 pt-4 border-t border-border flex flex-wrap gap-2">
+                                {item.formalCitation && (
+                                  <CopyCitationButton text={item.formalCitation} label={t('search.copyCitation')} />
+                                )}
                                 {isPrecedente ? (
-                                  <Button variant="outline" size="sm" className="gap-2 font-serif" disabled>
-                                    <FileText className="h-4 w-4" />
-                                    {t('search.viewPrecedente')}
-                                  </Button>
+                                  <Link href={`/precedente/${item.id}`}>
+                                    <Button variant="outline" size="sm" className="gap-2 font-serif">
+                                      <FileText className="h-4 w-4" />
+                                      {t('search.viewPrecedente')}
+                                    </Button>
+                                  </Link>
                                 ) : (
                                   <Link href={`/tesis/${item.id}`}>
                                     <Button variant="outline" size="sm" className="gap-2 font-serif">

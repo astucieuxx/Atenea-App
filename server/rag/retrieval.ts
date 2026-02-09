@@ -306,3 +306,90 @@ export function formatPrecedenteCitation(p: Precedente): string {
 
   return parts.join(". ");
 }
+
+// ============================================================================
+// CITAS FORMALES COMPLETAS (listas para copiar-pegar en escritos)
+// ============================================================================
+
+/**
+ * Genera cita formal completa de una tesis para uso en escritos jurídicos.
+ *
+ * Formato:
+ * RUBRO. Tipo. Instancia. Época. Fuente. Libro X, Tomo Y, mes año,
+ * página Z. Tesis: número. Materia(s): materias.
+ */
+export function formatTesisFormalCitation(tesis: Tesis): string {
+  const lines: string[] = [];
+
+  // Rubro en mayúsculas
+  if (tesis.title) {
+    lines.push(tesis.title.toUpperCase());
+  }
+
+  const meta: string[] = [];
+
+  if (tesis.tipo) meta.push(tesis.tipo);
+  if (tesis.instancia) meta.push(tesis.instancia);
+  if (tesis.organo_jurisdiccional) meta.push(tesis.organo_jurisdiccional);
+  if (tesis.epoca) meta.push(tesis.epoca);
+  if (tesis.fuente) meta.push(tesis.fuente);
+
+  // Localización detallada
+  const loc: string[] = [];
+  if (tesis.localizacion_libro) loc.push(`Libro ${tesis.localizacion_libro}`);
+  if (tesis.localizacion_tomo) loc.push(`Tomo ${tesis.localizacion_tomo}`);
+  if (tesis.localizacion_mes && tesis.localizacion_anio) {
+    loc.push(`${tesis.localizacion_mes} de ${tesis.localizacion_anio}`);
+  } else if (tesis.localizacion_anio) {
+    loc.push(tesis.localizacion_anio);
+  }
+  if (tesis.localizacion_pagina) loc.push(`página ${tesis.localizacion_pagina}`);
+
+  if (loc.length > 0) meta.push(loc.join(", "));
+
+  if (tesis.tesis_numero) meta.push(`Tesis: ${tesis.tesis_numero}`);
+  if (tesis.materias) meta.push(`Materia(s): ${tesis.materias}`);
+
+  if (meta.length > 0) {
+    lines.push(meta.join(". ") + ".");
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Genera cita formal completa de un precedente para uso en escritos jurídicos.
+ *
+ * Formato:
+ * RUBRO. Sala. Tipo de asunto: Expediente. Localización.
+ * Fecha de publicación. Registro IUS: número.
+ */
+export function formatPrecedenteFormalCitation(p: Precedente): string {
+  const lines: string[] = [];
+
+  // Rubro en mayúsculas
+  if (p.rubro) {
+    lines.push(p.rubro.toUpperCase());
+  }
+
+  const meta: string[] = [];
+
+  if (p.sala) meta.push(p.sala);
+
+  if (p.tipo_asunto && p.tipo_asunto_expediente) {
+    meta.push(`${p.tipo_asunto}: ${p.tipo_asunto_expediente}`);
+  } else if (p.tipo_asunto) {
+    meta.push(p.tipo_asunto);
+  }
+
+  if (p.promovente) meta.push(`Promovente: ${p.promovente}`);
+  if (p.localizacion) meta.push(p.localizacion);
+  if (p.fecha_publicacion) meta.push(`Fecha de publicación: ${p.fecha_publicacion}`);
+  if (p.ius) meta.push(`Registro IUS: ${p.ius}`);
+
+  if (meta.length > 0) {
+    lines.push(meta.join(". ") + ".");
+  }
+
+  return lines.join("\n");
+}

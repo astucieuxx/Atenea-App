@@ -163,8 +163,10 @@ export interface AskResponse {
     id: string;
     title: string;
     citation: string;
+    formalCitation: string;
     relevanceScore: number;
     source?: "tesis" | "precedente";
+    url?: string;
   }>;
   hasEvidence: boolean;
   confidence: "high" | "medium" | "low";

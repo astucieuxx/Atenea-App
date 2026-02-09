@@ -19,6 +19,8 @@ import {
   retrieveRelevantDocuments,
   formatTesisCitation,
   formatPrecedenteCitation,
+  formatTesisFormalCitation,
+  formatPrecedenteFormalCitation,
   type RetrievedTesis,
   type RetrievedPrecedente,
 } from "./retrieval";
@@ -53,8 +55,10 @@ export interface AskResponse {
     id: string;
     title: string;
     citation: string;
+    formalCitation: string;
     relevanceScore: number;
     source?: "tesis" | "precedente";
+    url?: string;
   }>;
   hasEvidence: boolean;
   confidence: "high" | "medium" | "low";
@@ -483,15 +487,19 @@ export async function askQuestion(
       id: rt.tesis.id,
       title: rt.tesis.title,
       citation: formatTesisCitation(rt.tesis),
+      formalCitation: formatTesisFormalCitation(rt.tesis),
       relevanceScore: rt.relevanceScore,
       source: "tesis" as const,
+      url: rt.tesis.url || undefined,
     })),
     ...precedentesToUse.map(rp => ({
       id: rp.precedente.id,
       title: rp.precedente.rubro,
       citation: formatPrecedenteCitation(rp.precedente),
+      formalCitation: formatPrecedenteFormalCitation(rp.precedente),
       relevanceScore: rp.relevanceScore,
       source: "precedente" as const,
+      url: rp.precedente.url_origen || undefined,
     })),
   ];
 

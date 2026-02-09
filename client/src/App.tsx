@@ -10,6 +10,7 @@ import Home from "@/pages/home";
 import Landing from "@/pages/landing";
 import Analysis from "@/pages/analysis";
 import TesisDetail from "@/pages/tesis-detail";
+import PrecedenteDetail from "@/pages/precedente-detail";
 import History from "@/pages/history";
 import Ask from "@/pages/ask";
 import NotFound from "@/pages/not-found";
@@ -27,6 +28,7 @@ function RouterContent() {
           <Route path="/" component={Landing} />
           <Route path="/ask" component={Ask} />
           <Route path="/tesis/:id" component={TesisDetail} />
+          <Route path="/precedente/:id" component={PrecedenteDetail} />
           <Route path="/historial" component={History} />
           <Route path="/logo-preview" component={LogoPreview} />
           <Route component={NotFound} />
