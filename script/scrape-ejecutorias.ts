@@ -276,7 +276,7 @@ function mapToEjecutoria(raw: RawDocument, detail?: Record<string, any> | null):
 
   return {
     id: String(merged.id || merged.ius || ""),
-    ius: merged.ius ?? parseInt(merged.id, 10) || 0,
+    ius: merged.ius ?? (parseInt(merged.id, 10) || 0),
     rubro: merged.rubro || merged.titulo || merged.title || "",
     localizacion: merged.localizacion || merged.loc || "",
     instancia: merged.instancia || merged.organo || "",
