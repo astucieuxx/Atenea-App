@@ -333,9 +333,6 @@ export default function Ask() {
     return null;
   });
   
-  // Estado para controlar si ya se ejecutó la búsqueda automática
-  const [autoSearchExecuted, setAutoSearchExecuted] = useState(false);
-  
   // Estados para el contador de tiempo
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [totalTimeSeconds, setTotalTimeSeconds] = useState<number | null>(null);
@@ -405,32 +402,6 @@ export default function Ask() {
 
     return () => clearInterval(interval);
   }, [mutation.isPending, startTime]);
-
-  // Ejecutar búsqueda automática SOLO si viene de la landing page con pendingSearch flag
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return;
-
-    try {
-      const parsed = JSON.parse(saved);
-      // Solo auto-ejecutar si la landing page marcó pendingSearch
-      if (parsed.pendingSearch && parsed.question?.trim().length >= 10) {
-        // Eliminar el flag para que no se vuelva a ejecutar
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({
-          ...parsed,
-          pendingSearch: false,
-        }));
-        setAutoSearchExecuted(true);
-        setElapsedSeconds(0);
-        setTotalTimeSeconds(null);
-        setStartTime(null);
-        mutation.mutate({ question: parsed.question.trim() });
-      }
-    } catch {
-      // Ignorar errores
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Solo ejecutar al montar
 
   // Limpiar resultado guardado si la pregunta cambia y no coincide con la guardada
   useEffect(() => {

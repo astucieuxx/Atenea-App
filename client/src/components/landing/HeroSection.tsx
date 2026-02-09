@@ -20,7 +20,6 @@ export default function HeroSection() {
         localStorage.setItem("atenea_rag_search", JSON.stringify({
           question: searchQuery.trim(),
           timestamp: Date.now(),
-          pendingSearch: true, // Flag para que /ask auto-ejecute la búsqueda
         }));
       }
       // Redirigir a /ask
