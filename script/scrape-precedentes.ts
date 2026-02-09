@@ -1,18 +1,18 @@
 /**
- * Scraper de Ejecutorias del Semanario Judicial de la Federación
+ * Scraper de Precedentes del Semanario Judicial de la Federación
  * ================================================================
  *
- * Extrae las 22,604 ejecutorias de https://sjf2.scjn.gob.mx
+ * Extrae los ~22,604 precedentes de https://sjf2.scjn.gob.mx
  * usando la API REST descubierta:
  *   POST /services/sjfejecutoriamicroservice/api/public/ejecutorias?size={n}
  *
  * Uso:
- *   npx tsx script/scrape-ejecutorias.ts                    # Ejecutar desde cero
- *   npx tsx script/scrape-ejecutorias.ts --resume           # Reanudar desde checkpoint
- *   npx tsx script/scrape-ejecutorias.ts --size 50          # Items por página (default: 20)
- *   npx tsx script/scrape-ejecutorias.ts --delay 2000       # Delay entre requests en ms (default: 1500)
- *   npx tsx script/scrape-ejecutorias.ts --with-detail      # También obtener detalle individual
- *   npx tsx script/scrape-ejecutorias.ts --concurrency 3    # Peticiones paralelas para detalles (default: 2)
+ *   npx tsx script/scrape-precedentes.ts                    # Ejecutar desde cero
+ *   npx tsx script/scrape-precedentes.ts --resume           # Reanudar desde checkpoint
+ *   npx tsx script/scrape-precedentes.ts --size 50          # Items por página (default: 20)
+ *   npx tsx script/scrape-precedentes.ts --delay 2000       # Delay entre requests en ms (default: 1500)
+ *   npx tsx script/scrape-precedentes.ts --with-detail      # También obtener detalle individual
+ *   npx tsx script/scrape-precedentes.ts --concurrency 3    # Peticiones paralelas para detalles (default: 2)
  *
  * Requisitos:
  *   - Node.js 18+
@@ -69,8 +69,8 @@ interface RawDocument {
   [key: string]: any;
 }
 
-/** Cleaned ejecutoria output */
-interface Ejecutoria {
+/** Cleaned precedente output */
+interface Precedente {
   id: string;
   ius: number;
   rubro: string;
@@ -205,7 +205,6 @@ async function fetchPage(
 
   const json = await response.json();
 
-  // The API returns { documents: [...], totalDocuments?: N, ... }
   const documents: RawDocument[] = json.documents || json.content || json.data || [];
   const total =
     json.totalDocuments ??
@@ -218,7 +217,7 @@ async function fetchPage(
 }
 
 // ===========================
-// Core: Fetch detail for a single ejecutoria
+// Core: Fetch detail for a single precedente
 // ===========================
 
 async function fetchDetail(
@@ -226,7 +225,6 @@ async function fetchDetail(
   retries: number
 ): Promise<Record<string, any> | null> {
   try {
-    // Try common detail URL patterns
     const urls = [
       `${DETAIL_ENDPOINT}/${id}`,
       `${DETAIL_ENDPOINT}/ius/${id}`,
@@ -251,13 +249,12 @@ async function fetchDetail(
 }
 
 // ===========================
-// Mapping: Raw document -> Clean Ejecutoria
+// Mapping: Raw document -> Clean Precedente
 // ===========================
 
-function mapToEjecutoria(raw: RawDocument, detail?: Record<string, any> | null): Ejecutoria {
+function mapToPrecedente(raw: RawDocument, detail?: Record<string, any> | null): Precedente {
   const merged = detail ? { ...raw, ...detail } : raw;
 
-  // Fields we explicitly map
   const knownKeys = new Set([
     "id", "ius", "rubro", "localizacion", "sala",
     "tipoAsunto", "tipoAsuntoE", "promovente",
@@ -319,7 +316,7 @@ async function main() {
 
   console.log(`
 ╔═══════════════════════════════════════════════════════════════╗
-║  Scraper de Ejecutorias - Semanario Judicial de la Fed.      ║
+║  Scraper de Precedentes - Semanario Judicial de la Fed.      ║
 ║  API: sjfejecutoriamicroservice                              ║
 ║  Page size: ${String(config.pageSize).padEnd(48)}║
 ║  Delay: ${String(config.delayMs + "ms").padEnd(52)}║
@@ -331,9 +328,9 @@ async function main() {
     mkdirSync(config.outputDir, { recursive: true });
   }
 
-  const outputJson = resolve(config.outputDir, "ejecutorias.json");
-  const outputJsonl = resolve(config.outputDir, "ejecutorias.jsonl");
-  const checkpointPath = resolve(config.outputDir, "ejecutorias-checkpoint.json");
+  const outputJson = resolve(config.outputDir, "precedentes.json");
+  const outputJsonl = resolve(config.outputDir, "precedentes.jsonl");
+  const checkpointPath = resolve(config.outputDir, "precedentes-checkpoint.json");
 
   // --- Step 0: Probe the API ---
   log("Probando conexión a la API...");
@@ -354,7 +351,7 @@ async function main() {
     process.exit(1);
   }
 
-  log(`API respondió OK. Total de documentos: ${totalDocuments || "desconocido"}`);
+  log(`API respondió OK. Total de precedentes: ${totalDocuments || "desconocido"}`);
   log(`Campos del primer documento: ${Object.keys(sampleDoc).join(", ")}`);
   log(`Primer rubro: "${(sampleDoc.rubro || "").substring(0, 100)}..."`);
 
@@ -363,7 +360,7 @@ async function main() {
 
   // --- Step 1: Load checkpoint if resuming ---
   let startPage = 0;
-  let ejecutorias: Ejecutoria[] = [];
+  let precedentes: Precedente[] = [];
 
   if (config.resume) {
     const cp = loadCheckpoint(checkpointPath);
@@ -371,15 +368,13 @@ async function main() {
       startPage = cp.lastPage + 1;
       log(`Reanudando desde página ${startPage}. ${cp.scrapedCount} items previos.`);
 
-      // Load existing JSONL
       if (existsSync(outputJsonl)) {
         const lines = readFileSync(outputJsonl, "utf-8").split("\n").filter(Boolean);
-        ejecutorias = lines.map((line) => JSON.parse(line));
-        log(`Cargados ${ejecutorias.length} items del archivo existente.`);
+        precedentes = lines.map((line) => JSON.parse(line));
+        log(`Cargados ${precedentes.length} items del archivo existente.`);
       }
     }
   } else {
-    // Clear previous output
     if (existsSync(outputJsonl)) writeFileSync(outputJsonl, "", "utf-8");
   }
 
@@ -403,22 +398,20 @@ async function main() {
       }
       consecutiveEmpty = 0;
 
-      // Map and append
       for (const doc of documents) {
-        const ej = mapToEjecutoria(doc);
-        ejecutorias.push(ej);
-        appendFileSync(outputJsonl, JSON.stringify(ej) + "\n", "utf-8");
+        const p = mapToPrecedente(doc);
+        precedentes.push(p);
+        appendFileSync(outputJsonl, JSON.stringify(p) + "\n", "utf-8");
         newItems++;
       }
 
-      logProgress(ejecutorias.length, total, "ejecutorias");
+      logProgress(precedentes.length, total, "precedentes");
 
-      // Save checkpoint every 10 pages
       if (page % 10 === 0) {
         saveCheckpoint(checkpointPath, {
           lastPage: page,
           totalDocuments: total,
-          scrapedCount: ejecutorias.length,
+          scrapedCount: precedentes.length,
           updatedAt: new Date().toISOString(),
         });
       }
@@ -426,83 +419,77 @@ async function main() {
       await sleep(config.delayMs);
     } catch (err: any) {
       log(`\nError en página ${page}: ${err.message}`);
-      // Save checkpoint so we can resume
       saveCheckpoint(checkpointPath, {
         lastPage: Math.max(0, page - 1),
         totalDocuments: total,
-        scrapedCount: ejecutorias.length,
+        scrapedCount: precedentes.length,
         updatedAt: new Date().toISOString(),
       });
       log("Checkpoint guardado. Puedes reanudar con --resume");
-
-      // Try to continue with next page
       await sleep(5000);
     }
   }
 
-  console.log(); // newline after progress bar
+  console.log();
 
-  // --- Step 3: (Optional) Fetch full detail for each ejecutoria ---
-  if (config.withDetail && ejecutorias.length > 0) {
-    log(`\nObteniendo detalle individual de ${ejecutorias.length} ejecutorias...`);
+  // --- Step 3: (Optional) Fetch full detail ---
+  if (config.withDetail && precedentes.length > 0) {
+    log(`\nObteniendo detalle individual de ${precedentes.length} precedentes...`);
     log(`(Concurrencia: ${config.concurrency}, esto puede tomar un rato)`);
 
     let detailCount = 0;
-    const enriched: Ejecutoria[] = [];
+    const enriched: Precedente[] = [];
 
-    for (let i = 0; i < ejecutorias.length; i += config.concurrency) {
-      const batch = ejecutorias.slice(i, i + config.concurrency);
+    for (let i = 0; i < precedentes.length; i += config.concurrency) {
+      const batch = precedentes.slice(i, i + config.concurrency);
 
-      const promises = batch.map(async (ej) => {
-        const detail = await fetchDetail(ej.id, config.maxRetries);
+      const promises = batch.map(async (p) => {
+        const detail = await fetchDetail(p.id, config.maxRetries);
         if (detail) {
-          return mapToEjecutoria(detail as any, null);
+          return mapToPrecedente(detail as any, null);
         }
-        return ej;
+        return p;
       });
 
       const results = await Promise.all(promises);
       enriched.push(...results);
       detailCount += batch.length;
 
-      logProgress(detailCount, ejecutorias.length, "detalles obtenidos");
+      logProgress(detailCount, precedentes.length, "detalles obtenidos");
       await sleep(config.delayMs);
     }
 
     console.log();
-    ejecutorias = enriched;
+    precedentes = enriched;
 
-    // Rewrite JSONL with enriched data
-    const jsonlContent = ejecutorias.map((e) => JSON.stringify(e)).join("\n") + "\n";
+    const jsonlContent = precedentes.map((p) => JSON.stringify(p)).join("\n") + "\n";
     writeFileSync(outputJsonl, jsonlContent, "utf-8");
   }
 
   // --- Step 4: Save final JSON ---
-  log(`Guardando ${ejecutorias.length} ejecutorias...`);
-  writeFileSync(outputJson, JSON.stringify(ejecutorias, null, 2), "utf-8");
+  log(`Guardando ${precedentes.length} precedentes...`);
+  writeFileSync(outputJson, JSON.stringify(precedentes, null, 2), "utf-8");
 
-  // Final checkpoint
   saveCheckpoint(checkpointPath, {
     lastPage: totalPages - 1,
     totalDocuments: total,
-    scrapedCount: ejecutorias.length,
+    scrapedCount: precedentes.length,
     updatedAt: new Date().toISOString(),
   });
 
-  // Stats
-  const jsonSize = (Buffer.byteLength(JSON.stringify(ejecutorias)) / 1024 / 1024).toFixed(1);
+  const jsonSize = (Buffer.byteLength(JSON.stringify(precedentes)) / 1024 / 1024).toFixed(1);
 
   console.log(`
 ╔═══════════════════════════════════════════════════════════════╗
 ║  Scraping completado!                                        ║
 ║                                                              ║
-║  Total extraído: ${String(ejecutorias.length).padEnd(42)}║
+║  Total extraído: ${String(precedentes.length).padEnd(42)}║
 ║  Nuevos en esta sesión: ${String(newItems).padEnd(36)}║
 ║  Tamaño JSON: ${String(jsonSize + " MB").padEnd(46)}║
 ║                                                              ║
 ║  Archivos:                                                   ║
-║    data/ejecutorias.json   (formateado, fácil de leer)       ║
-║    data/ejecutorias.jsonl  (una línea por item, para RAG)    ║
+║    data/precedentes.json   (formateado, fácil de leer)       ║
+║    data/precedentes.jsonl  (una línea por item, para RAG)    ║
 ╚═══════════════════════════════════════════════════════════════╝
 `);
 }
