@@ -636,7 +636,7 @@ export default function Ask() {
                 </CardContent>
               </Card>
 
-              {/* Tesis Used */}
+              {/* Tesis & Precedentes Used */}
               {result.tesisUsed.length > 0 && (
                 <Card className="border-border bg-card shadow-sm animate-fade-up" style={{ animationDelay: '0.2s' }}>
                   <CardHeader className="p-6 sm:p-8 pb-3 sm:pb-4">
@@ -648,38 +648,58 @@ export default function Ask() {
                   </CardHeader>
                   <CardContent className="p-6 sm:p-8 pt-0">
                     <div className="space-y-3 sm:space-y-4">
-                      {result.tesisUsed.map((tesis, index) => (
-                        <Card key={tesis.id} id={`tesis-${index + 1}`} className="border-border bg-secondary/30 scroll-mt-20">
+                      {result.tesisUsed.map((item, index) => {
+                        const isPrecedente = item.source === "precedente";
+                        return (
+                        <Card key={item.id} id={`tesis-${index + 1}`} className="border-border bg-secondary/30 scroll-mt-20">
                           <CardContent className="p-6 sm:p-8">
                             <div className="flex flex-col gap-4">
-                              {/* Header con número y relevancia */}
+                              {/* Header con número, tipo y relevancia */}
                               <div className="flex flex-wrap items-center gap-3">
                                 <Badge variant="outline" className="text-sm font-serif font-semibold">
                                   #{index + 1}
                                 </Badge>
+                                <Badge variant={isPrecedente ? "default" : "secondary"} className="text-xs font-serif">
+                                  {isPrecedente ? t('search.sourcePrecedente') : t('search.sourceTesis')}
+                                </Badge>
                                 <span className="text-sm text-muted-foreground font-serif">
-                                  {t('search.relevance')}: {(tesis.relevanceScore * 100).toFixed(1)}%
+                                  {t('search.relevance')}: {(item.relevanceScore * 100).toFixed(1)}%
                                 </span>
                               </div>
-                              
-                              {/* Rubro de la tesis (solo una vez) */}
+
+                              {/* Rubro */}
                               <h4 className="font-semibold text-base sm:text-lg text-foreground font-serif break-words leading-relaxed">
-                                {tesis.title}
+                                {item.title}
                               </h4>
-                              
-                              {/* Botón para ver tesis completa */}
+
+                              {/* Cita */}
+                              {item.citation && (
+                                <p className="text-sm text-muted-foreground font-serif leading-relaxed">
+                                  {item.citation}
+                                </p>
+                              )}
+
+                              {/* Botón para ver detalle */}
                               <div className="mt-4 pt-4 border-t border-border">
-                                <Link href={`/tesis/${tesis.id}`}>
-                                  <Button variant="outline" size="sm" className="gap-2 font-serif">
+                                {isPrecedente ? (
+                                  <Button variant="outline" size="sm" className="gap-2 font-serif" disabled>
                                     <FileText className="h-4 w-4" />
-                                    {t('search.viewFull')}
+                                    {t('search.viewPrecedente')}
                                   </Button>
-                                </Link>
+                                ) : (
+                                  <Link href={`/tesis/${item.id}`}>
+                                    <Button variant="outline" size="sm" className="gap-2 font-serif">
+                                      <FileText className="h-4 w-4" />
+                                      {t('search.viewFull')}
+                                    </Button>
+                                  </Link>
+                                )}
                               </div>
                             </div>
                           </CardContent>
                         </Card>
-                      ))}
+                        );
+                      })}
                     </div>
                   </CardContent>
                 </Card>

@@ -164,6 +164,7 @@ export interface AskResponse {
     title: string;
     citation: string;
     relevanceScore: number;
+    source?: "tesis" | "precedente";
   }>;
   hasEvidence: boolean;
   confidence: "high" | "medium" | "low";

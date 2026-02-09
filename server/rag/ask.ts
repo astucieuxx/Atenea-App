@@ -54,6 +54,7 @@ export interface AskResponse {
     title: string;
     citation: string;
     relevanceScore: number;
+    source?: "tesis" | "precedente";
   }>;
   hasEvidence: boolean;
   confidence: "high" | "medium" | "low";
@@ -483,12 +484,14 @@ export async function askQuestion(
       title: rt.tesis.title,
       citation: formatTesisCitation(rt.tesis),
       relevanceScore: rt.relevanceScore,
+      source: "tesis" as const,
     })),
     ...precedentesToUse.map(rp => ({
       id: rp.precedente.id,
       title: rp.precedente.rubro,
       citation: formatPrecedenteCitation(rp.precedente),
       relevanceScore: rp.relevanceScore,
+      source: "precedente" as const,
     })),
   ];
 
