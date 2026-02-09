@@ -137,19 +137,20 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
     const parts: (string | JSX.Element)[] = [];
     let lastIndex = 0;
     
-    // Primero procesar referencias [ID: xxx] y convertirlas a [#número]
-    const idRegex = /\[ID:\s*(\d+)\]/gi;
+    // Procesar referencias [ID: xxx] y [Precedente ID: xxx] y convertirlas a [#número]
+    // Los IDs pueden ser numéricos (tesis) o alfanuméricos (precedentes como wpE67psBmHFQL6iFfLa_)
+    const idRegex = /\[(?:Precedente\s+)?ID:\s*([^\]]+)\]/gi;
     let processedText = text;
     const idMatches: Array<{ id: string; index: number; original: string }> = [];
-    
+
     let idMatch;
     while ((idMatch = idRegex.exec(text)) !== null) {
-      const tesisId = idMatch[1];
-      const tesis = tesisMapById.get(tesisId);
-      if (tesis) {
+      const docId = idMatch[1].trim();
+      const doc = tesisMapById.get(docId);
+      if (doc) {
         idMatches.push({
-          id: tesisId,
-          index: tesis.index,
+          id: docId,
+          index: doc.index,
           original: idMatch[0]
         });
       }

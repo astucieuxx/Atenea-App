@@ -124,7 +124,7 @@ Tu objetivo es generar respuestas jurídicas que:
 
 REGLAS FUNDAMENTALES:
 1. Responde SOLO con base en la información proporcionada en el contexto (RAG). NO inventes normas, precedentes, artículos o criterios que no estén en las tesis proporcionadas.
-2. Cuando cites jurisprudencia, usa referencias exactas con el formato: [ID: xxx] "Rubro de la tesis". El sistema convertirá automáticamente [ID: xxx] a [#número] donde el número corresponde al orden en la lista de tesis al final.
+2. Cuando cites jurisprudencia o precedentes, usa SIEMPRE el formato: [ID: xxx] "Rubro". Usa el ID exacto proporcionado. El sistema convertirá automáticamente [ID: xxx] a [#número] clickeable.
 3. Si las tesis no son suficientes, indícalo explícitamente y explica qué falta.
 4. NUNCA inventes información que no esté en las tesis proporcionadas.
 
@@ -230,8 +230,8 @@ ${precedentesContext ? `\nPrecedentes judiciales relevantes:\n${precedentesConte
 INSTRUCCIONES:
 1. Responde SOLO con las tesis y precedentes proporcionados.
 2. Formato: **TÍTULO DE SECCIÓN**, --- para separadores, - para listas, **texto** para conceptos clave.
-3. Cita tesis con: [ID: xxx] "Rubro". El sistema convertirá [ID: xxx] a [#número].
-4. Cita precedentes con: [Precedente ID: xxx] "Rubro".
+3. Cita TANTO tesis como precedentes con: [ID: xxx] "Rubro". Usa el ID exacto de cada fuente. El sistema convertirá [ID: xxx] a [#número] clickeable.
+4. NO uses el formato [Precedente ID: xxx]. Usa siempre [ID: xxx] para todas las fuentes.
 5. Sin emojis, hashtags ni símbolos decorativos.
 6. Clasifica en "Jurisprudencia Directamente Aplicable" y "Jurisprudencia Relacionada". Incluye precedentes cuando refuercen o complementen las tesis.
 7. Si faltan tesis o precedentes, indícalo en la Respuesta Ejecutiva.`;
