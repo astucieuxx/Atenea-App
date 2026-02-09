@@ -19,7 +19,10 @@
     "rag:explore": "tsx script/explore-jsonl.ts",
     "rag:test": "tsx script/test-rag.ts",
     "maintain:pgvector": "tsx script/maintain-pgvector.ts",
-    "migrate": "tsx script/run-migration.ts"
+    "migrate": "tsx script/run-migration.ts",
+    "scrape:discover": "tsx script/discover-api.ts",
+    "scrape:ejecutorias": "tsx script/scrape-ejecutorias.ts",
+    "scrape:ejecutorias:resume": "tsx script/scrape-ejecutorias.ts --resume"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -71,6 +74,7 @@
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
     "pg": "^8.16.3",
+    "playwright-core": "^1.58.2",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
