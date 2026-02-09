@@ -14,6 +14,7 @@
     "rag:status": "tsx script/rag-status.ts",
     "rag:count": "tsx script/count-tesis-embeddings.ts",
     "rag:process-missing": "tsx script/process-missing-embeddings.ts",
+    "rag:fix-missing": "tsx script/fix-missing-embeddings.ts",
     "rag:ingest": "tsx script/ingest-rag.ts",
     "rag:ingest:single": "tsx script/ingest-rag-single.ts",
     "rag:explore": "tsx script/explore-jsonl.ts",
