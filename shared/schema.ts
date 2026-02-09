@@ -1,5 +1,26 @@
 import { z } from "zod";
 
+// Precedente judicial (ejecutoria) del SJF
+export interface Precedente {
+  id: string;
+  ius: number;
+  rubro: string;
+  texto_publicacion: string;
+  localizacion: string;
+  sala: string;
+  tipo_asunto: string;
+  tipo_asunto_expediente: string;
+  promovente: string;
+  fecha_publicacion: string;
+  temas: string; // JSON array serializado
+  votos: string; // JSON array serializado
+  votacion: boolean;
+  semanal: boolean;
+  url_origen: string;
+  raw_fields: string; // JSON con campos extra
+  scraped_at: string;
+}
+
 // Tesis/Jurisprudencia from CSV
 export interface Tesis {
   id: string;
@@ -142,7 +163,10 @@ export interface AskResponse {
     id: string;
     title: string;
     citation: string;
+    formalCitation: string;
     relevanceScore: number;
+    source?: "tesis" | "precedente";
+    url?: string;
   }>;
   hasEvidence: boolean;
   confidence: "high" | "medium" | "low";

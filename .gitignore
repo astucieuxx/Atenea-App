@@ -18,3 +18,7 @@ attached_assets/tesis_part*.jsonl.gz
 
 # Log files
 rag_queries_log.csv
+
+# Scraped data output
+data/
+script/api-endpoints.json

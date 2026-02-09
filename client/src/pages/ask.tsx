@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowRight, Loader2, FileText, Sparkles, AlertTriangle, BookOpen, Search } from "lucide-react";
+import { ArrowRight, Loader2, FileText, Sparkles, AlertTriangle, BookOpen, Search, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -137,19 +137,20 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
     const parts: (string | JSX.Element)[] = [];
     let lastIndex = 0;
     
-    // Primero procesar referencias [ID: xxx] y convertirlas a [#número]
-    const idRegex = /\[ID:\s*(\d+)\]/gi;
+    // Procesar referencias [ID: xxx] y [Precedente ID: xxx] y convertirlas a [#número]
+    // Los IDs pueden ser numéricos (tesis) o alfanuméricos (precedentes como wpE67psBmHFQL6iFfLa_)
+    const idRegex = /\[(?:Precedente\s+)?ID:\s*([^\]]+)\]/gi;
     let processedText = text;
     const idMatches: Array<{ id: string; index: number; original: string }> = [];
-    
+
     let idMatch;
     while ((idMatch = idRegex.exec(text)) !== null) {
-      const tesisId = idMatch[1];
-      const tesis = tesisMapById.get(tesisId);
-      if (tesis) {
+      const docId = idMatch[1].trim();
+      const doc = tesisMapById.get(docId);
+      if (doc) {
         idMatches.push({
-          id: tesisId,
-          index: tesis.index,
+          id: docId,
+          index: doc.index,
           original: idMatch[0]
         });
       }
@@ -257,6 +258,36 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
   );
 }
 
+// Componente de botón para copiar cita formal
+function CopyCitationButton({ text, label }: { text: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <Button variant="outline" size="sm" className="gap-2 font-serif" onClick={handleCopy}>
+      {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+      {copied ? "Copiado" : label}
+    </Button>
+  );
+}
+
 const EXAMPLE_QUESTIONS = [
   "¿Qué es el amparo directo?",
   "¿Cuándo procede la suspensión en juicio de amparo?",
@@ -282,28 +313,8 @@ export default function Ask() {
     return "";
   });
   
-  // Estado para guardar el resultado restaurado
-  const [savedResult, setSavedResult] = useState<AskResponse | null>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          // Solo restaurar si tiene menos de 1 hora de antigüedad
-          const oneHour = 60 * 60 * 1000;
-          if (parsed.timestamp && Date.now() - parsed.timestamp < oneHour && parsed.result) {
-            return parsed.result;
-          }
-        } catch {
-          // Ignorar errores
-        }
-      }
-    }
-    return null;
-  });
-  
-  // Estado para controlar si ya se ejecutó la búsqueda automática
-  const [autoSearchExecuted, setAutoSearchExecuted] = useState(false);
+  // Estado para guardar el resultado (solo se llena después de una búsqueda exitosa)
+  const [savedResult, setSavedResult] = useState<AskResponse | null>(null);
   
   // Estados para el contador de tiempo
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -375,38 +386,6 @@ export default function Ask() {
     return () => clearInterval(interval);
   }, [mutation.isPending, startTime]);
 
-  // Ejecutar búsqueda automática si hay una pregunta nueva desde la landing page
-  useEffect(() => {
-    // Solo ejecutar si hay una pregunta válida, no se ha ejecutado antes, y no hay resultado guardado
-    if (question.trim().length >= 10 && !autoSearchExecuted && !savedResult && !mutation.isPending && !mutation.data) {
-      // Verificar si la pregunta es nueva (no tiene resultado guardado)
-      const saved = localStorage.getItem(STORAGE_KEY);
-      let isNewQuestion = true;
-      
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          // Si la pregunta coincide con la guardada y hay resultado, no ejecutar
-          if (parsed.question && parsed.question.trim() === question.trim() && parsed.result) {
-            isNewQuestion = false;
-          }
-        } catch {
-          // Ignorar errores
-        }
-      }
-      
-      // Si es una pregunta nueva, ejecutar búsqueda automáticamente
-      if (isNewQuestion) {
-        setAutoSearchExecuted(true);
-        // Resetear contador antes de iniciar búsqueda automática
-        setElapsedSeconds(0);
-        setTotalTimeSeconds(null);
-        setStartTime(null);
-        mutation.mutate({ question: question.trim() });
-      }
-    }
-  }, [question, autoSearchExecuted, savedResult, mutation.isPending, mutation.data]);
-
   // Limpiar resultado guardado si la pregunta cambia y no coincide con la guardada
   useEffect(() => {
     if (question.trim() && savedResult) {
@@ -417,7 +396,6 @@ export default function Ask() {
           // Si la pregunta actual no coincide con la guardada, limpiar resultado
           if (parsed.question && parsed.question.trim() !== question.trim()) {
             setSavedResult(null);
-            setAutoSearchExecuted(false); // Permitir nueva búsqueda automática
           }
         } catch {
           // Ignorar errores
@@ -425,16 +403,12 @@ export default function Ask() {
       } else {
         // Si no hay datos guardados, limpiar resultado
         setSavedResult(null);
-        setAutoSearchExecuted(false);
       }
-    } else if (!question.trim() && savedResult) {
-      // Si la pregunta está vacía, mantener el resultado (puede ser que el usuario solo esté editando)
-      // No hacer nada
     }
   }, [question]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSearch = () => {
+    console.log("[Ask] handleSearch called explicitly by user action");
     if (question.trim().length < 10) {
       toast({
         title: t('search.questionTooShort'),
@@ -491,7 +465,7 @@ export default function Ask() {
           {/* Search Form */}
           <Card className="border-border bg-card shadow-sm animate-fade-up" style={{ animationDelay: '0.2s' }}>
             <CardContent className="p-6 sm:p-8 lg:p-10">
-              <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+              <div className="space-y-4 sm:space-y-5">
                 <div className="space-y-3">
                   <label htmlFor="question-input" className="text-base sm:text-lg font-serif font-semibold text-foreground">
                     {t('search.questionLabel')}
@@ -514,8 +488,8 @@ export default function Ask() {
                           <div className="absolute inset-0 w-2 h-2 rounded-full bg-primary/40 animate-ping"></div>
                         </div>
                         <span className="text-xs font-mono font-medium text-foreground/80 tabular-nums tracking-wider">
-                          {elapsedSeconds < 60 
-                            ? `${elapsedSeconds.toFixed(1)}s` 
+                          {elapsedSeconds < 60
+                            ? `${elapsedSeconds.toFixed(1)}s`
                             : `${Math.floor(elapsedSeconds / 60)}m ${(elapsedSeconds % 60).toFixed(1)}s`
                           }
                         </span>
@@ -524,11 +498,12 @@ export default function Ask() {
                   )}
                   <div className="flex justify-end w-full sm:w-auto">
                     <Button
-                      type="submit"
+                      type="button"
                       size="default"
                       variant="navy"
                       className="gap-2 text-sm font-serif px-6"
                       disabled={mutation.isPending || question.trim().length < 10}
+                      onClick={handleSearch}
                     >
                     {mutation.isPending ? (
                       <>
@@ -545,7 +520,7 @@ export default function Ask() {
                     </Button>
                   </div>
                 </div>
-              </form>
+              </div>
 
               {/* Example Questions - Solo mostrar si NO hay resultado */}
               {showExamples && (
@@ -636,7 +611,7 @@ export default function Ask() {
                 </CardContent>
               </Card>
 
-              {/* Tesis Used */}
+              {/* Tesis & Precedentes Used */}
               {result.tesisUsed.length > 0 && (
                 <Card className="border-border bg-card shadow-sm animate-fade-up" style={{ animationDelay: '0.2s' }}>
                   <CardHeader className="p-6 sm:p-8 pb-3 sm:pb-4">
@@ -648,38 +623,77 @@ export default function Ask() {
                   </CardHeader>
                   <CardContent className="p-6 sm:p-8 pt-0">
                     <div className="space-y-3 sm:space-y-4">
-                      {result.tesisUsed.map((tesis, index) => (
-                        <Card key={tesis.id} id={`tesis-${index + 1}`} className="border-border bg-secondary/30 scroll-mt-20">
+                      {result.tesisUsed.map((item, index) => {
+                        const isPrecedente = item.source === "precedente";
+                        return (
+                        <Card key={item.id} id={`tesis-${index + 1}`} className="border-border bg-secondary/30 scroll-mt-20">
                           <CardContent className="p-6 sm:p-8">
                             <div className="flex flex-col gap-4">
-                              {/* Header con número y relevancia */}
+                              {/* Header con número, tipo y relevancia */}
                               <div className="flex flex-wrap items-center gap-3">
                                 <Badge variant="outline" className="text-sm font-serif font-semibold">
                                   #{index + 1}
                                 </Badge>
+                                <Badge variant={isPrecedente ? "default" : "secondary"} className="text-xs font-serif">
+                                  {isPrecedente ? t('search.sourcePrecedente') : t('search.sourceTesis')}
+                                </Badge>
                                 <span className="text-sm text-muted-foreground font-serif">
-                                  {t('search.relevance')}: {(tesis.relevanceScore * 100).toFixed(1)}%
+                                  {t('search.relevance')}: {(item.relevanceScore * 100).toFixed(1)}%
                                 </span>
                               </div>
-                              
-                              {/* Rubro de la tesis (solo una vez) */}
+
+                              {/* Rubro */}
                               <h4 className="font-semibold text-base sm:text-lg text-foreground font-serif break-words leading-relaxed">
-                                {tesis.title}
+                                {item.title}
                               </h4>
-                              
-                              {/* Botón para ver tesis completa */}
-                              <div className="mt-4 pt-4 border-t border-border">
-                                <Link href={`/tesis/${tesis.id}`}>
-                                  <Button variant="outline" size="sm" className="gap-2 font-serif">
-                                    <FileText className="h-4 w-4" />
-                                    {t('search.viewFull')}
-                                  </Button>
-                                </Link>
+
+                              {/* Cita */}
+                              {item.citation && (
+                                <p className="text-sm text-muted-foreground font-serif leading-relaxed">
+                                  {item.citation}
+                                </p>
+                              )}
+
+                              {/* Cita formal expandible */}
+                              {item.formalCitation && (
+                                <details className="group">
+                                  <summary className="cursor-pointer text-sm text-primary font-serif hover:underline">
+                                    {t('search.showFormalCitation')}
+                                  </summary>
+                                  <div className="mt-2 p-3 bg-muted/50 rounded-md border border-border">
+                                    <pre className="text-xs sm:text-sm text-foreground font-serif whitespace-pre-wrap leading-relaxed">
+                                      {item.formalCitation}
+                                    </pre>
+                                  </div>
+                                </details>
+                              )}
+
+                              {/* Botones de acción */}
+                              <div className="mt-4 pt-4 border-t border-border flex flex-wrap gap-2">
+                                {item.formalCitation && (
+                                  <CopyCitationButton text={item.formalCitation} label={t('search.copyCitation')} />
+                                )}
+                                {isPrecedente ? (
+                                  <Link href={`/precedente/${item.id}`}>
+                                    <Button variant="outline" size="sm" className="gap-2 font-serif">
+                                      <FileText className="h-4 w-4" />
+                                      {t('search.viewPrecedente')}
+                                    </Button>
+                                  </Link>
+                                ) : (
+                                  <Link href={`/tesis/${item.id}`}>
+                                    <Button variant="outline" size="sm" className="gap-2 font-serif">
+                                      <FileText className="h-4 w-4" />
+                                      {t('search.viewFull')}
+                                    </Button>
+                                  </Link>
+                                )}
                               </div>
                             </div>
                           </CardContent>
                         </Card>
-                      ))}
+                        );
+                      })}
                     </div>
                   </CardContent>
                 </Card>

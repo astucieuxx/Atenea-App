@@ -15,7 +15,15 @@
  * - Indicar explícitamente si no hay tesis aplicables
  */
 
-import { retrieveRelevantTesis, formatTesisCitation, type RetrievedTesis } from "./retrieval";
+import {
+  retrieveRelevantDocuments,
+  formatTesisCitation,
+  formatPrecedenteCitation,
+  formatTesisFormalCitation,
+  formatPrecedenteFormalCitation,
+  type RetrievedTesis,
+  type RetrievedPrecedente,
+} from "./retrieval";
 
 // ============================================================================
 // CONFIGURACIÓN
@@ -47,7 +55,10 @@ export interface AskResponse {
     id: string;
     title: string;
     citation: string;
+    formalCitation: string;
     relevanceScore: number;
+    source?: "tesis" | "precedente";
+    url?: string;
   }>;
   hasEvidence: boolean;
   confidence: "high" | "medium" | "low";
@@ -64,7 +75,8 @@ export interface AskResponse {
 
 async function generateAnswerWithLLM(
   question: string,
-  retrievedTesis: RetrievedTesis[]
+  retrievedTesis: RetrievedTesis[],
+  retrievedPrecedentes: RetrievedPrecedente[] = [],
 ): Promise<{ answer: string; tokenUsage: { promptTokens: number; completionTokens: number; totalTokens: number } }> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -90,6 +102,17 @@ Contenido relevante: ${rt.chunkText.slice(0, 300)}...`;
     })
     .join("\n\n");
 
+  // Construir contexto con precedentes recuperados
+  const precedentesContext = retrievedPrecedentes
+    .map((rp, idx) => {
+      const citation = formatPrecedenteCitation(rp.precedente);
+      return `PRECEDENTE ${idx + 1} (ID: ${rp.precedente.id}, IUS: ${rp.precedente.ius}):
+Rubro: "${rp.precedente.rubro}"
+Cita: ${citation}
+Contenido relevante: ${rp.chunkText.slice(0, 300)}...`;
+    })
+    .join("\n\n");
+
   // Prompt estructurado para respuesta jurídica profesional y práctica
   const systemPrompt = `Eres un abogado senior especialista en derecho fiscal y penal fiscal mexicano, con experiencia en litigio ante la SCJN y en diseño de productos legales (legal tech).
 
@@ -101,7 +124,7 @@ Tu objetivo es generar respuestas jurídicas que:
 
 REGLAS FUNDAMENTALES:
 1. Responde SOLO con base en la información proporcionada en el contexto (RAG). NO inventes normas, precedentes, artículos o criterios que no estén en las tesis proporcionadas.
-2. Cuando cites jurisprudencia, usa referencias exactas con el formato: [ID: xxx] "Rubro de la tesis". El sistema convertirá automáticamente [ID: xxx] a [#número] donde el número corresponde al orden en la lista de tesis al final.
+2. Cuando cites jurisprudencia o precedentes, usa SIEMPRE el formato: [ID: xxx] "Rubro". Usa el ID exacto proporcionado. El sistema convertirá automáticamente [ID: xxx] a [#número] clickeable.
 3. Si las tesis no son suficientes, indícalo explícitamente y explica qué falta.
 4. NUNCA inventes información que no esté en las tesis proporcionadas.
 
@@ -202,14 +225,16 @@ Si las tesis no son suficientes para responder, estructura la respuesta así:
 
 Tesis relevantes:
 ${tesisContext}
+${precedentesContext ? `\nPrecedentes judiciales relevantes:\n${precedentesContext}` : ""}
 
 INSTRUCCIONES:
-1. Responde SOLO con las tesis proporcionadas.
+1. Responde SOLO con las tesis y precedentes proporcionados.
 2. Formato: **TÍTULO DE SECCIÓN**, --- para separadores, - para listas, **texto** para conceptos clave.
-3. Cita tesis con: [ID: xxx] "Rubro". El sistema convertirá [ID: xxx] a [#número].
-4. Sin emojis, hashtags ni símbolos decorativos.
-5. Clasifica en "Jurisprudencia Directamente Aplicable" y "Jurisprudencia Relacionada".
-6. Si faltan tesis, indícalo en la Respuesta Ejecutiva.`;
+3. Cita TANTO tesis como precedentes con: [ID: xxx] "Rubro". Usa el ID exacto de cada fuente. El sistema convertirá [ID: xxx] a [#número] clickeable.
+4. NO uses el formato [Precedente ID: xxx]. Usa siempre [ID: xxx] para todas las fuentes.
+5. Sin emojis, hashtags ni símbolos decorativos.
+6. Clasifica en "Jurisprudencia Directamente Aplicable" y "Jurisprudencia Relacionada". Incluye precedentes cuando refuercen o complementen las tesis.
+7. Si faltan tesis o precedentes, indícalo en la Respuesta Ejecutiva.`;
 
   try {
     // Limpiar la API key (eliminar espacios al inicio/final)
@@ -372,25 +397,23 @@ export async function askQuestion(
     throw new Error("La pregunta debe tener al menos 10 caracteres");
   }
 
-  // Paso 1: Recuperar tesis relevantes
-  const retrievedTesis = await retrieveRelevantTesis(question, {
+  // Paso 1: Recuperar tesis y precedentes relevantes
+  const { tesis: retrievedTesis, precedentes: retrievedPrecedentes } = await retrieveRelevantDocuments(question, {
     maxResults: config.maxTesis * 2, // Recuperar más para filtrar
     finalLimit: config.maxTesis,
     minSimilarity: config.minRelevance,
     vectorWeight: 0.7,
     textWeight: 0.3,
     deduplicateByTesis: true,
+    includePrecedentes: true,
   });
 
   // Paso 2: Verificar si hay evidencia suficiente
-  // Ser más permisivo: si hay tesis recuperadas, intentar generar respuesta
-  // incluso si la relevancia es baja (el LLM puede decidir si son útiles)
-  const hasEvidence = retrievedTesis.length > 0;
-  
-  // Si no hay ninguna tesis, retornar inmediatamente
+  const hasEvidence = retrievedTesis.length > 0 || retrievedPrecedentes.length > 0;
+
   if (!hasEvidence) {
     return {
-      answer: "No se encontró jurisprudencia directamente aplicable a esta pregunta. Se recomienda reformular la consulta con términos jurídicos más específicos o consultar otras fuentes.",
+      answer: "No se encontró jurisprudencia ni precedentes directamente aplicables a esta pregunta. Se recomienda reformular la consulta con términos jurídicos más específicos o consultar otras fuentes.",
       tesisUsed: [],
       hasEvidence: false,
       confidence: "low",
@@ -398,11 +421,12 @@ export async function askQuestion(
   }
 
   // Filtrar tesis con relevancia muy baja (menor a 0.2) antes de enviar al LLM
-  // pero mantener las que tienen al menos algo de relevancia
   const filteredTesis = retrievedTesis.filter(rt => rt.relevanceScore >= 0.2);
-  
-  // Si después de filtrar no quedan tesis, usar las originales pero con advertencia
   const tesisToUse = filteredTesis.length > 0 ? filteredTesis : retrievedTesis;
+
+  // Filtrar precedentes igual
+  const filteredPrecedentes = retrievedPrecedentes.filter(rp => rp.relevanceScore >= 0.2);
+  const precedentesToUse = filteredPrecedentes.length > 0 ? filteredPrecedentes : retrievedPrecedentes;
 
   // Paso 3: Generar respuesta (con LLM o sin él)
   let answer: string;
@@ -410,7 +434,7 @@ export async function askQuestion(
   
   if (config.useLLM) {
     try {
-      const llmResult = await generateAnswerWithLLM(question, tesisToUse);
+      const llmResult = await generateAnswerWithLLM(question, tesisToUse, precedentesToUse);
       answer = llmResult.answer;
       tokenUsage = llmResult.tokenUsage;
       console.log("[askQuestion] Token usage received:", tokenUsage);
@@ -436,30 +460,48 @@ export async function askQuestion(
     };
   }
 
-  // Paso 4: Determinar confianza basada en las tesis usadas
-  const avgRelevance = tesisToUse.reduce((sum, rt) => sum + rt.relevanceScore, 0) / tesisToUse.length;
+  // Paso 4: Determinar confianza basada en tesis + precedentes
+  const allScores = [
+    ...tesisToUse.map(rt => rt.relevanceScore),
+    ...precedentesToUse.map(rp => rp.relevanceScore),
+  ];
+  const totalDocs = allScores.length;
+  const avgRelevance = totalDocs > 0 ? allScores.reduce((sum, s) => sum + s, 0) / totalDocs : 0;
   let confidence: "high" | "medium" | "low";
   let finalHasEvidence = true;
-  
-  if (avgRelevance >= 0.6 && tesisToUse.length >= 3) {
+
+  if (avgRelevance >= 0.6 && totalDocs >= 3) {
     confidence = "high";
-  } else if (avgRelevance >= 0.4 && tesisToUse.length >= 2) {
+  } else if (avgRelevance >= 0.4 && totalDocs >= 2) {
     confidence = "medium";
-  } else if (avgRelevance >= 0.3 && tesisToUse.length >= 1) {
+  } else if (avgRelevance >= 0.3 && totalDocs >= 1) {
     confidence = "low";
   } else {
-    // Si la relevancia promedio es muy baja, marcar como sin evidencia suficiente
     confidence = "low";
     finalHasEvidence = false;
   }
 
-  // Paso 5: Formatear tesis usadas
-  const tesisUsed = tesisToUse.map(rt => ({
-    id: rt.tesis.id,
-    title: rt.tesis.title,
-    citation: formatTesisCitation(rt.tesis),
-    relevanceScore: rt.relevanceScore,
-  }));
+  // Paso 5: Formatear tesis y precedentes usados
+  const tesisUsed = [
+    ...tesisToUse.map(rt => ({
+      id: rt.tesis.id,
+      title: rt.tesis.title,
+      citation: formatTesisCitation(rt.tesis),
+      formalCitation: formatTesisFormalCitation(rt.tesis),
+      relevanceScore: rt.relevanceScore,
+      source: "tesis" as const,
+      url: rt.tesis.url || undefined,
+    })),
+    ...precedentesToUse.map(rp => ({
+      id: rp.precedente.id,
+      title: rp.precedente.rubro,
+      citation: formatPrecedenteCitation(rp.precedente),
+      formalCitation: formatPrecedenteFormalCitation(rp.precedente),
+      relevanceScore: rp.relevanceScore,
+      source: "precedente" as const,
+      url: rp.precedente.url_origen || undefined,
+    })),
+  ];
 
   // Asegurar que tokenUsage siempre esté presente (incluso si es undefined, lo convertimos a un objeto con 0s)
   const finalTokenUsage = tokenUsage || {

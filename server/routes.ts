@@ -104,6 +104,23 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/precedente/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { getPrecedenteById } = await import("./rag/database-precedentes");
+      const precedente = await getPrecedenteById(id);
+
+      if (!precedente) {
+        return res.status(404).json({ error: "Precedente no encontrado" });
+      }
+
+      return res.json(precedente);
+    } catch (error) {
+      console.error("Error fetching precedente:", error);
+      return res.status(500).json({ error: "Error al obtener el precedente" });
+    }
+  });
+
   app.post("/api/arguments", async (req, res) => {
     try {
       const parsed = argumentRequestSchema.safeParse(req.body);

@@ -19,7 +19,7 @@ export default function HeroSection() {
       if (typeof window !== "undefined") {
         localStorage.setItem("atenea_rag_search", JSON.stringify({
           question: searchQuery.trim(),
-          timestamp: Date.now()
+          timestamp: Date.now(),
         }));
       }
       // Redirigir a /ask

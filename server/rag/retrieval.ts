@@ -1,18 +1,23 @@
 /**
  * ATENEA RAG - Módulo de Retrieval
- * 
- * Coordina la recuperación de tesis relevantes para una pregunta.
- * 
+ *
+ * Coordina la recuperación de tesis Y precedentes relevantes para una pregunta.
+ *
  * Estrategia:
- * - Búsqueda híbrida (vectorial + full-text)
- * - Deduplicación por tesis_id (un chunk por tesis)
+ * - Búsqueda híbrida (vectorial + full-text) en ambas tablas
+ * - Deduplicación por documento (un chunk por tesis/precedente)
  * - Filtrado por relevancia mínima
  * - Ordenamiento por score combinado
  */
 
 import { generateEmbedding } from "./embeddings";
 import { hybridSearch, getTesisById, type HybridSearchResult } from "./database";
-import type { Tesis } from "@shared/schema";
+import {
+  hybridSearchPrecedentes,
+  getPrecedenteById,
+  type PrecedenteHybridResult,
+} from "./database-precedentes";
+import type { Tesis, Precedente } from "@shared/schema";
 
 // ============================================================================
 // CONFIGURACIÓN
@@ -25,6 +30,7 @@ export interface RetrievalConfig {
   vectorWeight: number; // Peso de búsqueda vectorial (0-1)
   textWeight: number; // Peso de búsqueda full-text (0-1)
   deduplicateByTesis: boolean; // Si true, solo retorna el mejor chunk por tesis
+  includePrecedentes?: boolean; // Si true, también busca en precedentes
 }
 
 export const DEFAULT_RETRIEVAL_CONFIG: RetrievalConfig = {
@@ -34,6 +40,7 @@ export const DEFAULT_RETRIEVAL_CONFIG: RetrievalConfig = {
   vectorWeight: 0.7,
   textWeight: 0.3,
   deduplicateByTesis: true,
+  includePrecedentes: true,
 };
 
 // ============================================================================
@@ -50,8 +57,23 @@ export interface RetrievedTesis {
   textScore: number;
 }
 
+export interface RetrievedPrecedente {
+  precedente: Precedente;
+  chunkText: string;
+  chunkIndex: number;
+  chunkType: string;
+  relevanceScore: number;
+  vectorScore: number;
+  textScore: number;
+}
+
+export interface RetrievalResult {
+  tesis: RetrievedTesis[];
+  precedentes: RetrievedPrecedente[];
+}
+
 // ============================================================================
-// RETRIEVAL PRINCIPAL
+// RETRIEVAL PRINCIPAL (tesis only - backwards compatible)
 // ============================================================================
 
 export async function retrieveRelevantTesis(
@@ -84,14 +106,14 @@ export async function retrieveRelevantTesis(
   let processedResults: HybridSearchResult[];
   if (config.deduplicateByTesis) {
     const tesisMap = new Map<string, HybridSearchResult>();
-    
+
     for (const result of filteredResults) {
       const existing = tesisMap.get(result.tesisId);
       if (!existing || result.combinedScore > existing.combinedScore) {
         tesisMap.set(result.tesisId, result);
       }
     }
-    
+
     processedResults = Array.from(tesisMap.values())
       .sort((a, b) => b.combinedScore - a.combinedScore)
       .slice(0, config.finalLimit);
@@ -101,7 +123,7 @@ export async function retrieveRelevantTesis(
 
   // Paso 5: Obtener tesis completas
   const retrievedTesis: RetrievedTesis[] = [];
-  
+
   for (const result of processedResults) {
     const tesis = await getTesisById(result.tesisId);
     if (tesis) {
@@ -121,35 +143,253 @@ export async function retrieveRelevantTesis(
 }
 
 // ============================================================================
+// RETRIEVAL COMBINADO (tesis + precedentes)
+// ============================================================================
+
+export async function retrieveRelevantDocuments(
+  query: string,
+  config: RetrievalConfig = DEFAULT_RETRIEVAL_CONFIG,
+): Promise<RetrievalResult> {
+  console.log(`[retrieval] Generando embedding para query...`);
+  const queryEmbedding = await generateEmbedding(query);
+  console.log(`[retrieval] Embedding generado (${queryEmbedding.length} dimensiones)`);
+
+  // Buscar en paralelo en tesis y precedentes
+  console.log(`[retrieval] Ejecutando búsqueda híbrida en tesis y precedentes...`);
+
+  const searchPromises: [
+    Promise<HybridSearchResult[]>,
+    Promise<PrecedenteHybridResult[]>,
+  ] = [
+    hybridSearch(queryEmbedding, query, config.maxResults, config.vectorWeight, config.textWeight),
+    config.includePrecedentes
+      ? hybridSearchPrecedentes(queryEmbedding, query, config.maxResults, config.vectorWeight, config.textWeight)
+      : Promise.resolve([]),
+  ];
+
+  const [tesisResults, precResults] = await Promise.all(searchPromises);
+
+  // --- Procesar resultados de tesis ---
+  const filteredTesis = tesisResults.filter(r => r.combinedScore >= config.minSimilarity);
+  let processedTesis: HybridSearchResult[];
+
+  if (config.deduplicateByTesis) {
+    const tesisMap = new Map<string, HybridSearchResult>();
+    for (const r of filteredTesis) {
+      const existing = tesisMap.get(r.tesisId);
+      if (!existing || r.combinedScore > existing.combinedScore) {
+        tesisMap.set(r.tesisId, r);
+      }
+    }
+    processedTesis = Array.from(tesisMap.values())
+      .sort((a, b) => b.combinedScore - a.combinedScore)
+      .slice(0, config.finalLimit);
+  } else {
+    processedTesis = filteredTesis.slice(0, config.finalLimit);
+  }
+
+  const retrievedTesis: RetrievedTesis[] = [];
+  for (const r of processedTesis) {
+    const tesis = await getTesisById(r.tesisId);
+    if (tesis) {
+      retrievedTesis.push({
+        tesis,
+        chunkText: r.chunkText,
+        chunkIndex: r.chunkIndex,
+        chunkType: r.chunkType,
+        relevanceScore: r.combinedScore,
+        vectorScore: r.vectorScore,
+        textScore: r.textScore,
+      });
+    }
+  }
+
+  // --- Procesar resultados de precedentes ---
+  const filteredPrec = precResults.filter(r => r.combinedScore >= config.minSimilarity);
+  let processedPrec: PrecedenteHybridResult[];
+
+  if (config.deduplicateByTesis) {
+    const precMap = new Map<string, PrecedenteHybridResult>();
+    for (const r of filteredPrec) {
+      const existing = precMap.get(r.precedenteId);
+      if (!existing || r.combinedScore > existing.combinedScore) {
+        precMap.set(r.precedenteId, r);
+      }
+    }
+    processedPrec = Array.from(precMap.values())
+      .sort((a, b) => b.combinedScore - a.combinedScore)
+      .slice(0, config.finalLimit);
+  } else {
+    processedPrec = filteredPrec.slice(0, config.finalLimit);
+  }
+
+  const retrievedPrecedentes: RetrievedPrecedente[] = [];
+  for (const r of processedPrec) {
+    const precedente = await getPrecedenteById(r.precedenteId);
+    if (precedente) {
+      retrievedPrecedentes.push({
+        precedente,
+        chunkText: r.chunkText,
+        chunkIndex: r.chunkIndex,
+        chunkType: r.chunkType,
+        relevanceScore: r.combinedScore,
+        vectorScore: r.vectorScore,
+        textScore: r.textScore,
+      });
+    }
+  }
+
+  console.log(`[retrieval] Encontrados: ${retrievedTesis.length} tesis, ${retrievedPrecedentes.length} precedentes`);
+
+  return {
+    tesis: retrievedTesis,
+    precedentes: retrievedPrecedentes,
+  };
+}
+
+// ============================================================================
 // FORMATO DE CITAS
 // ============================================================================
 
 export function formatTesisCitation(tesis: Tesis): string {
   const parts: string[] = [];
-  
+
   if (tesis.title) {
     parts.push(`"${tesis.title}"`);
   }
-  
+
   if (tesis.tipo) {
     parts.push(tesis.tipo);
   }
-  
+
   if (tesis.organo_jurisdiccional) {
     parts.push(tesis.organo_jurisdiccional);
   }
-  
+
   if (tesis.epoca) {
     parts.push(tesis.epoca);
   }
-  
+
   if (tesis.fuente) {
     parts.push(tesis.fuente);
   }
-  
+
   if (tesis.localizacion_tomo && tesis.localizacion_pagina) {
     parts.push(`Tomo ${tesis.localizacion_tomo}, página ${tesis.localizacion_pagina}`);
   }
-  
+
   return parts.join(". ");
+}
+
+export function formatPrecedenteCitation(p: Precedente): string {
+  const parts: string[] = [];
+
+  if (p.rubro) {
+    parts.push(`"${p.rubro}"`);
+  }
+
+  if (p.sala) {
+    parts.push(p.sala);
+  }
+
+  if (p.tipo_asunto) {
+    parts.push(p.tipo_asunto);
+  }
+
+  if (p.tipo_asunto_expediente) {
+    parts.push(p.tipo_asunto_expediente);
+  }
+
+  if (p.localizacion) {
+    parts.push(p.localizacion);
+  }
+
+  return parts.join(". ");
+}
+
+// ============================================================================
+// CITAS FORMALES COMPLETAS (listas para copiar-pegar en escritos)
+// ============================================================================
+
+/**
+ * Genera cita formal completa de una tesis para uso en escritos jurídicos.
+ *
+ * Formato:
+ * RUBRO. Tipo. Instancia. Época. Fuente. Libro X, Tomo Y, mes año,
+ * página Z. Tesis: número. Materia(s): materias.
+ */
+export function formatTesisFormalCitation(tesis: Tesis): string {
+  const lines: string[] = [];
+
+  // Rubro en mayúsculas
+  if (tesis.title) {
+    lines.push(tesis.title.toUpperCase());
+  }
+
+  const meta: string[] = [];
+
+  if (tesis.tipo) meta.push(tesis.tipo);
+  if (tesis.instancia) meta.push(tesis.instancia);
+  if (tesis.organo_jurisdiccional) meta.push(tesis.organo_jurisdiccional);
+  if (tesis.epoca) meta.push(tesis.epoca);
+  if (tesis.fuente) meta.push(tesis.fuente);
+
+  // Localización detallada
+  const loc: string[] = [];
+  if (tesis.localizacion_libro) loc.push(`Libro ${tesis.localizacion_libro}`);
+  if (tesis.localizacion_tomo) loc.push(`Tomo ${tesis.localizacion_tomo}`);
+  if (tesis.localizacion_mes && tesis.localizacion_anio) {
+    loc.push(`${tesis.localizacion_mes} de ${tesis.localizacion_anio}`);
+  } else if (tesis.localizacion_anio) {
+    loc.push(tesis.localizacion_anio);
+  }
+  if (tesis.localizacion_pagina) loc.push(`página ${tesis.localizacion_pagina}`);
+
+  if (loc.length > 0) meta.push(loc.join(", "));
+
+  if (tesis.tesis_numero) meta.push(`Tesis: ${tesis.tesis_numero}`);
+  if (tesis.materias) meta.push(`Materia(s): ${tesis.materias}`);
+
+  if (meta.length > 0) {
+    lines.push(meta.join(". ") + ".");
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Genera cita formal completa de un precedente para uso en escritos jurídicos.
+ *
+ * Formato:
+ * RUBRO. Sala. Tipo de asunto: Expediente. Localización.
+ * Fecha de publicación. Registro IUS: número.
+ */
+export function formatPrecedenteFormalCitation(p: Precedente): string {
+  const lines: string[] = [];
+
+  // Rubro en mayúsculas
+  if (p.rubro) {
+    lines.push(p.rubro.toUpperCase());
+  }
+
+  const meta: string[] = [];
+
+  if (p.sala) meta.push(p.sala);
+
+  if (p.tipo_asunto && p.tipo_asunto_expediente) {
+    meta.push(`${p.tipo_asunto}: ${p.tipo_asunto_expediente}`);
+  } else if (p.tipo_asunto) {
+    meta.push(p.tipo_asunto);
+  }
+
+  if (p.promovente) meta.push(`Promovente: ${p.promovente}`);
+  if (p.localizacion) meta.push(p.localizacion);
+  if (p.fecha_publicacion) meta.push(`Fecha de publicación: ${p.fecha_publicacion}`);
+  if (p.ius) meta.push(`Registro IUS: ${p.ius}`);
+
+  if (meta.length > 0) {
+    lines.push(meta.join(". ") + ".");
+  }
+
+  return lines.join("\n");
 }
