@@ -952,8 +952,8 @@ export default function Ask() {
               : 'flex-1'
           }`}>
             {/* Chat Area */}
-            <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 pb-56">
-              <div className="max-w-4xl mx-auto">
+            <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6" style={{ paddingBottom: messages.length > 0 ? '200px' : '0', scrollPaddingBottom: messages.length > 0 ? '200px' : '0' }}>
+              <div className="max-w-4xl mx-auto" style={{ paddingBottom: messages.length > 0 ? '200px' : '0' }}>
                 {/* Messages */}
                 <div className="space-y-4">
             {messages.map((message) => (
@@ -1014,11 +1014,16 @@ export default function Ask() {
             )}
             
                 <div ref={messagesEndRef} />
+                {/* Spacer para que el scrollbar no llegue hasta la barra de búsqueda */}
+                {messages.length > 0 && (
+                  <div style={{ height: '200px', flexShrink: 0 }} />
+                )}
                 </div>
               </div>
             </div>
             
-            {/* Input Bar - Fija siempre visible */}
+            {/* Input Bar - Fija siempre visible (solo cuando hay mensajes) */}
+            {messages.length > 0 && (
             <div className={`fixed bottom-0 left-0 border-t border-border bg-background z-20 ${
               currentSources.length > 0 
                 ? 'right-[450px] lg:right-[450px]' // Ancho respetando sidebar
@@ -1095,13 +1100,14 @@ export default function Ask() {
                 </div>
               </div>
             </div>
+            )}
           </div>
           
           {/* Sidebar de Fuentes - Desktop */}
           {currentSources.length > 0 && (
             <>
               {/* Desktop Sidebar */}
-              <aside className="hidden lg:block w-[450px] border-l border-border bg-background overflow-y-auto flex-shrink-0 z-30 relative pb-56">
+              <aside className="hidden lg:block w-[450px] border-l border-border bg-background overflow-y-auto flex-shrink-0 z-30 relative" style={{ paddingBottom: messages.length > 0 ? '200px' : '0' }}>
                 <div className="p-4 sm:p-6">
                   <div className="space-y-4">
                   <div className="flex items-center justify-between mb-4">
