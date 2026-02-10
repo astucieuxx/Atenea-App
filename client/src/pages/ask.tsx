@@ -878,7 +878,7 @@ export default function Ask() {
     <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* Estado inicial - Centrado estilo ChatGPT */}
       {messages.length === 0 && (
-        <div className="h-full flex flex-col items-center justify-center px-4 sm:px-6 py-4 pb-32">
+        <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 py-4">
           <div className="w-full max-w-3xl mx-auto space-y-6">
             {/* Título centrado */}
             <div className="text-center space-y-6 animate-fade-up" style={{ animationDelay: '0.1s' }}>
@@ -941,13 +941,17 @@ export default function Ask() {
         </div>
       )}
       
-      {/* Main Content Area - Chat + Sidebar */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Chat Area */}
-        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 pb-32">
-          <div className="max-w-4xl mx-auto">
-            {/* Messages */}
-            <div className="space-y-4">
+      {/* Main Content Area - Chat + Sidebar + Input Bar */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Chat + Sidebar Row */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Chat Area + Input Bar Container */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Chat Area */}
+            <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6">
+              <div className="max-w-4xl mx-auto">
+                {/* Messages */}
+                <div className="space-y-4">
             {messages.map((message) => (
               <React.Fragment key={message.id}>
                 {message.role === 'user' ? (
@@ -1005,18 +1009,93 @@ export default function Ask() {
               </div>
             )}
             
-            <div ref={messagesEndRef} />
+                <div ref={messagesEndRef} />
+                </div>
+              </div>
+            </div>
+            
+            {/* Input Bar - Integrada al layout */}
+            <div className="border-t border-border bg-background flex-shrink-0">
+              <div className="px-4 sm:px-6 py-4">
+                <div className="max-w-4xl mx-auto">
+                  {/* Botones de acción - Solo mostrar si hay mensajes */}
+                  {messages.length > 0 && (
+                    <div className="flex gap-2 mb-3 justify-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="gap-2 text-xs font-serif"
+                        onClick={handleSaveSearch}
+                      >
+                        <Save className="h-3.5 w-3.5" />
+                        Guardar búsqueda
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="gap-2 text-xs font-serif text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={handleClearChat}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Limpiar chat
+                      </Button>
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-3 items-end">
+                    <div className="flex-1">
+                      <Textarea
+                        id="question-input"
+                        value={question}
+                        onChange={(e) => setQuestion(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                            e.preventDefault();
+                            handleSearch();
+                          }
+                        }}
+                        placeholder={t('search.questionPlaceholder')}
+                        className="min-h-[60px] max-h-[200px] resize-none text-sm sm:text-base font-serif leading-relaxed border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-0 focus-visible:ring-0"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      size="default"
+                      variant="navy"
+                      className="gap-2 text-sm font-serif px-6 shrink-0"
+                      disabled={mutation.isPending || question.trim().length < 10}
+                      onClick={handleSearch}
+                    >
+                      {mutation.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          {t('search.generating')}
+                        </>
+                      ) : (
+                        <>
+                          <Search className="h-4 w-4" />
+                          {t('search.button')}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2 font-serif">
+                    Presiona Cmd/Ctrl + Enter para enviar
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-        </div>
-        
-        {/* Sidebar de Fuentes - Desktop (sticky) */}
-        {currentSources.length > 0 && (
-          <>
-            {/* Desktop Sidebar */}
-            <aside className="hidden lg:block w-[450px] border-l border-border bg-background overflow-y-auto">
-              <div className="sticky top-0 p-4 sm:p-6">
-                <div className="space-y-4">
+          
+          {/* Sidebar de Fuentes - Desktop */}
+          {currentSources.length > 0 && (
+            <>
+              {/* Desktop Sidebar */}
+              <aside className="hidden lg:block w-[450px] border-l border-border bg-background overflow-y-auto flex-shrink-0">
+                <div className="p-4 sm:p-6">
+                  <div className="space-y-4">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-serif font-bold text-foreground flex items-center gap-2">
                       <BookOpen className="h-5 w-5 text-muted-foreground" />
@@ -1100,82 +1179,8 @@ export default function Ask() {
             )}
           </>
         )}
-      </div>
-      
-      {/* Input Bar - Fixed at bottom (siempre visible) */}
-      <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-30">
-        <div className="container mx-auto px-4 sm:px-6 py-4">
-          <div className="max-w-4xl mx-auto">
-            {/* Botones de acción - Solo mostrar si hay mensajes */}
-            {messages.length > 0 && (
-              <div className="flex gap-2 mb-3 justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 text-xs font-serif"
-                  onClick={handleSaveSearch}
-                >
-                  <Save className="h-3.5 w-3.5" />
-                  Guardar búsqueda
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 text-xs font-serif text-destructive hover:text-destructive hover:bg-destructive/10"
-                  onClick={handleClearChat}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Limpiar chat
-                </Button>
-              </div>
-            )}
-            
-            <div className="flex gap-3 items-end">
-              <div className="flex-1">
-                <Textarea
-                  id="question-input"
-                  value={question}
-                  onChange={(e) => setQuestion(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                      e.preventDefault();
-                      handleSearch();
-                    }
-                  }}
-                  placeholder={t('search.questionPlaceholder')}
-                  className="min-h-[60px] max-h-[200px] resize-none text-sm sm:text-base font-serif leading-relaxed border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-0 focus-visible:ring-0"
-                />
-              </div>
-              <Button
-                type="button"
-                size="default"
-                variant="navy"
-                className="gap-2 text-sm font-serif px-6 shrink-0"
-                disabled={mutation.isPending || question.trim().length < 10}
-                onClick={handleSearch}
-              >
-                {mutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    {t('search.generating')}
-                  </>
-                ) : (
-                  <>
-                    <Search className="h-4 w-4" />
-                    {t('search.button')}
-                  </>
-                )}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2 font-serif">
-              Presiona Cmd/Ctrl + Enter para enviar
-            </p>
-          </div>
         </div>
       </div>
-
     </div>
   );
 }
