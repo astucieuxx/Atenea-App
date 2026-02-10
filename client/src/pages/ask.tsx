@@ -952,7 +952,7 @@ export default function Ask() {
               : 'flex-1'
           }`}>
             {/* Chat Area */}
-            <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6">
+            <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 pb-32">
               <div className="max-w-4xl mx-auto">
                 {/* Messages */}
                 <div className="space-y-4">
@@ -1018,8 +1018,12 @@ export default function Ask() {
               </div>
             </div>
             
-            {/* Input Bar - Integrada al layout */}
-            <div className="border-t border-border bg-background flex-shrink-0">
+            {/* Input Bar - Fija siempre visible */}
+            <div className={`fixed bottom-0 left-0 border-t border-border bg-background z-20 ${
+              currentSources.length > 0 
+                ? 'right-[450px] lg:right-[450px]' // Ancho respetando sidebar
+                : 'right-0'
+            }`}>
               <div className="px-4 sm:px-6 py-4">
                 <div className="max-w-4xl mx-auto">
                   {/* Botones de acción - Solo mostrar si hay mensajes */}
@@ -1097,7 +1101,7 @@ export default function Ask() {
           {currentSources.length > 0 && (
             <>
               {/* Desktop Sidebar */}
-              <aside className="hidden lg:block w-[450px] border-l border-border bg-background overflow-y-auto flex-shrink-0">
+              <aside className="hidden lg:block w-[450px] border-l border-border bg-background overflow-y-auto flex-shrink-0 z-30 relative">
                 <div className="p-4 sm:p-6">
                   <div className="space-y-4">
                   <div className="flex items-center justify-between mb-4">
