@@ -487,9 +487,16 @@ export async function hybridSearch(
   const chunkData = new Map<string, Omit<VectorSearchResult, "similarity">>();
 
   // Procesar resultados vectoriales
+  // Usar similarity directamente como base, con pequeño boost RRF para top resultados
   vectorResults.forEach((result, index) => {
-    const rrfScore = 1 / (60 + index + 1); // RRF: 1/(k + rank)
-    vectorScores.set(result.chunkId, result.similarity * vectorWeight + rrfScore * (1 - vectorWeight));
+    // RRF boost solo para los top 10 resultados (más significativo)
+    const rrfBoost = index < 10 ? 1 / (10 + index + 1) : 0;
+    // Similarity es la base principal (0-1), con pequeño boost de RRF para top results
+    // Si similarity es 0.8, queremos que el score final sea ~0.8 * vectorWeight
+    const baseScore = result.similarity;
+    // Boost máximo de 5% para top results
+    const boostedScore = Math.min(1.0, baseScore + (rrfBoost * 0.05));
+    vectorScores.set(result.chunkId, boostedScore * vectorWeight);
     chunkData.set(result.chunkId, {
       chunkId: result.chunkId,
       tesisId: result.tesisId,
@@ -503,10 +510,21 @@ export async function hybridSearch(
   });
 
   // Procesar resultados full-text
+  // Mejorar normalización: rank más bajo (mejor) = score más alto
+  const maxRank = Math.max(...textResults.map(r => r.rank), 1);
+  const minRank = Math.min(...textResults.map(r => r.rank), 1);
+  const rankRange = maxRank - minRank || 1;
+  
   textResults.forEach((result, index) => {
-    const rrfScore = 1 / (60 + index + 1);
-    const normalizedRank = result.rank / Math.max(...textResults.map(r => r.rank), 1);
-    textScores.set(result.chunkId, normalizedRank * textWeight + rrfScore * (1 - textWeight));
+    // Normalizar rank inversamente: rank más bajo (mejor) = score más alto
+    // Si rank es el mínimo (mejor), normalizedRank = 1.0
+    // Si rank es el máximo (peor), normalizedRank = 0.0
+    const normalizedRank = rankRange > 0 ? 1 - ((result.rank - minRank) / rankRange) : 1;
+    // RRF boost solo para top 10
+    const rrfBoost = index < 10 ? 1 / (10 + index + 1) : 0;
+    // Boost máximo de 5% para top results
+    const boostedScore = Math.min(1.0, normalizedRank + (rrfBoost * 0.05));
+    textScores.set(result.chunkId, boostedScore * textWeight);
     
     if (!chunkData.has(result.chunkId)) {
       chunkData.set(result.chunkId, {

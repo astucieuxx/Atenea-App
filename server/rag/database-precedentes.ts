@@ -373,9 +373,12 @@ export async function hybridSearchPrecedentes(
   const textScores = new Map<string, number>();
   const chunkData = new Map<string, Omit<PrecedenteVectorResult, "similarity">>();
 
+  // Procesar resultados vectoriales - mismo cálculo mejorado que en tesis
   vectorResults.forEach((result, index) => {
-    const rrfScore = 1 / (60 + index + 1);
-    vectorScores.set(result.chunkId, result.similarity * vectorWeight + rrfScore * (1 - vectorWeight));
+    const rrfBoost = index < 10 ? 1 / (10 + index + 1) : 0;
+    const baseScore = result.similarity;
+    const boostedScore = Math.min(1.0, baseScore + (rrfBoost * 0.05));
+    vectorScores.set(result.chunkId, boostedScore * vectorWeight);
     chunkData.set(result.chunkId, {
       chunkId: result.chunkId,
       precedenteId: result.precedenteId,
@@ -388,10 +391,16 @@ export async function hybridSearchPrecedentes(
     });
   });
 
+  // Procesar resultados full-text - mismo cálculo mejorado que en tesis
+  const maxRank = Math.max(...textResults.map(r => r.rank), 1);
+  const minRank = Math.min(...textResults.map(r => r.rank), 1);
+  const rankRange = maxRank - minRank || 1;
+  
   textResults.forEach((result, index) => {
-    const rrfScore = 1 / (60 + index + 1);
-    const normalizedRank = result.rank / Math.max(...textResults.map(r => r.rank), 1);
-    textScores.set(result.chunkId, normalizedRank * textWeight + rrfScore * (1 - textWeight));
+    const normalizedRank = rankRange > 0 ? 1 - ((result.rank - minRank) / rankRange) : 1;
+    const rrfBoost = index < 10 ? 1 / (10 + index + 1) : 0;
+    const boostedScore = Math.min(1.0, normalizedRank + (rrfBoost * 0.05));
+    textScores.set(result.chunkId, boostedScore * textWeight);
 
     if (!chunkData.has(result.chunkId)) {
       chunkData.set(result.chunkId, {
