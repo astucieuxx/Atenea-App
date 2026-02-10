@@ -13,6 +13,7 @@ import TesisDetail from "@/pages/tesis-detail";
 import PrecedenteDetail from "@/pages/precedente-detail";
 import History from "@/pages/history";
 import Ask from "@/pages/ask";
+import Library from "@/pages/library";
 import NotFound from "@/pages/not-found";
 import LogoPreview from "@/pages/logo-preview";
 
@@ -30,6 +31,7 @@ function RouterContent() {
           <Route path="/tesis/:id" component={TesisDetail} />
           <Route path="/precedente/:id" component={PrecedenteDetail} />
           <Route path="/historial" component={History} />
+          <Route path="/biblioteca" component={Library} />
           <Route path="/logo-preview" component={LogoPreview} />
           <Route component={NotFound} />
         </Switch>

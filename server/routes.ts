@@ -157,6 +157,22 @@ export async function registerRoutes(
     }
   });
 
+  // Endpoint para guardar búsqueda en historial
+  app.post("/api/search-history", async (req, res) => {
+    try {
+      const { question, answer, tesisUsed } = req.body;
+      if (!question || !answer) {
+        return res.status(400).json({ error: "Pregunta y respuesta son requeridas" });
+      }
+      // Por ahora solo confirmamos que se recibió, el guardado se hace en el frontend
+      // En el futuro se podría guardar en base de datos
+      return res.json({ success: true, message: "Búsqueda guardada" });
+    } catch (error) {
+      console.error("Error saving search:", error);
+      return res.status(500).json({ error: "Error al guardar la búsqueda" });
+    }
+  });
+
   app.get("/api/tesis", async (req, res) => {
     try {
       const search = req.query.q as string | undefined;

@@ -540,11 +540,34 @@ export async function hybridSearch(
     }
   });
 
-  // Combinar scores y ordenar
+  // Combinar scores: usar promedio ponderado de los scores normalizados
+  // Esto permite que scores altos de similarity se reflejen mejor
   const combined: HybridSearchResult[] = Array.from(chunkData.entries()).map(([chunkId, data]) => {
     const vScore = vectorScores.get(chunkId) || 0;
     const tScore = textScores.get(chunkId) || 0;
-    const combinedScore = vScore + tScore;
+    
+    // Obtener el score base normalizado (antes de multiplicar por weight)
+    // vScore = baseVectorScore * vectorWeight, entonces baseVectorScore = vScore / vectorWeight
+    const baseVectorScore = vScore > 0 ? vScore / vectorWeight : 0;
+    const baseTextScore = tScore > 0 ? tScore / textWeight : 0;
+    
+    // Combinar usando promedio ponderado de los scores base normalizados
+    let combinedScore: number;
+    if (baseVectorScore > 0 && baseTextScore > 0) {
+      // Ambos presentes: promedio ponderado (70% vectorial, 30% texto)
+      combinedScore = baseVectorScore * 0.7 + baseTextScore * 0.3;
+    } else if (baseVectorScore > 0) {
+      // Solo vectorial: usar directamente
+      combinedScore = baseVectorScore;
+    } else if (baseTextScore > 0) {
+      // Solo texto: usar directamente
+      combinedScore = baseTextScore;
+    } else {
+      combinedScore = 0;
+    }
+    
+    // Asegurar que esté en rango 0-1
+    combinedScore = Math.max(0, Math.min(1.0, combinedScore));
 
     return {
       ...data,

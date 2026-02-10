@@ -87,6 +87,17 @@ export function Header() {
                 {t('nav.history')}
               </Button>
             </Link>
+            <Link href="/biblioteca">
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`${
+                  location === "/biblioteca" ? "bg-accent text-accent-foreground" : ""
+                }`}
+              >
+                Biblioteca
+              </Button>
+            </Link>
             <Button
               variant="ghost"
               size="icon"
@@ -152,6 +163,18 @@ export function Header() {
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {t('nav.history')}
+                </Button>
+              </Link>
+              <Link href="/biblioteca">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`w-full justify-start ${
+                    location === "/biblioteca" ? "bg-accent text-accent-foreground" : ""
+                  }`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Biblioteca
                 </Button>
               </Link>
               <div className="flex items-center gap-2">

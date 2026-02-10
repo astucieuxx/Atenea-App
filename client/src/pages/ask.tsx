@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowRight, Loader2, FileText, Sparkles, AlertTriangle, BookOpen, Search, Copy, Check } from "lucide-react";
+import { ArrowRight, Loader2, FileText, Sparkles, AlertTriangle, BookOpen, Search, Copy, Check, Save, Trash2, X, ChevronRight, Bookmark, BookmarkCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,27 +11,17 @@ import type { AskResponse } from "@shared/schema";
 import { Link } from "wouter";
 import { useLanguage } from "@/contexts/language-context";
 
-// Interfaz para referencias parseadas
-interface ParsedReference {
-  number: number;
-  tipo: string;
-  tesis: string;
-  rubro: string;
-  registro: string;
-  epoca: string;
-  materia: string;
-  instancia: string;
-}
-
 // Componente para formatear la respuesta con estilo profesional
 function FormattedAnswer({ 
   text, 
   tesisUsed, 
-  onSuggestionClick 
+  onSuggestionClick,
+  onReferenceClick
 }: { 
   text: string; 
   tesisUsed: Array<{ id: string; title: string; citation: string }>; 
   onSuggestionClick?: (suggestion: string) => void;
+  onReferenceClick?: (index: number) => void;
 }) {
   // Tamaño de fuente fijo: pequeño
   const sizeClasses = {
@@ -46,48 +36,10 @@ function FormattedAnswer({
   // Crear un mapa de tesis por título para buscar referencias por título
   const tesisMapByTitle = new Map(tesisUsed.map((t, idx) => [t.title.toLowerCase(), { ...t, index: idx + 1 }]));
   
-  // Parsear secciones REFERENCIAS: y SUGERENCIAS: (SUGERENCIAS puede venir antes o después)
-  const suggestionsMatch = text.match(/SUGERENCIAS:\s*\n(.+?)(?:\n\n|\nREFERENCIAS:|$)/is);
-  const referencesMatch = text.match(/REFERENCIAS:\s*\n((?:\[.*?\]\s*\|.*?\n?)+)/is);
-  
-  // Extraer referencias parseadas
-  const parsedReferences: ParsedReference[] = [];
-  if (referencesMatch) {
-    const referencesText = referencesMatch[1];
-    const referenceLines = referencesText.split('\n').filter(line => line.trim().startsWith('['));
-    
-    referenceLines.forEach(line => {
-      const match = line.match(/\[(\d+)\]\s*\|\s*tipo:\s*([^|]+)\s*\|\s*tesis:\s*([^|]+)\s*\|\s*rubro:\s*([^|]+)\s*\|\s*registro:\s*([^|]+)\s*\|\s*epoca:\s*([^|]+)\s*\|\s*materia:\s*([^|]+)\s*\|\s*instancia:\s*(.+?)(?:\s*\|.*)?$/);
-      if (match) {
-        parsedReferences.push({
-          number: parseInt(match[1], 10),
-          tipo: match[2].trim(),
-          tesis: match[3].trim(),
-          rubro: match[4].trim(),
-          registro: match[5].trim(),
-          epoca: match[6].trim(),
-          materia: match[7].trim(),
-          instancia: match[8].trim(),
-        });
-      }
-    });
-  }
-  
-  // Extraer sugerencias
-  const suggestions: string[] = [];
-  if (suggestionsMatch) {
-    const suggestionsText = suggestionsMatch[1].trim();
-    suggestions.push(...suggestionsText.split('|').map(s => s.trim()).filter(s => s.length > 0));
-  }
-  
-  // Remover secciones REFERENCIAS: y SUGERENCIAS: del texto principal
+  // Ya no parseamos referencias ni sugerencias del texto - las fuentes se muestran en la sección "Tesis & Precedentes Used"
+  // Remover cualquier sección SUGERENCIAS: si el LLM la incluye por error
   let mainText = text;
-  if (referencesMatch) {
-    mainText = mainText.replace(/REFERENCIAS:.*$/is, '').trim();
-  }
-  if (suggestionsMatch) {
-    mainText = mainText.replace(/SUGERENCIAS:.*$/is, '').trim();
-  }
+  mainText = mainText.replace(/SUGERENCIAS:.*$/im, '').trim();
   
   // Función para procesar el texto y convertirlo en elementos React
   const formatText = (text: string) => {
@@ -151,7 +103,24 @@ function FormattedAnswer({
         return;
       }
       
-        // Detectar listas con viñetas
+      // Detectar puntos principales numerados (1., 2., 3., etc.)
+      const mainPointMatch = trimmedLine.match(/^(\d+)\.\s+(.+)$/);
+      if (mainPointMatch) {
+        const pointNumber = mainPointMatch[1];
+        const pointContent = mainPointMatch[2];
+        const processedContent = processBoldAndLinks(pointContent);
+        currentSection.push(
+          <div key={`main-point-${index}`} className="mb-4 sm:mb-5 mt-3 first:mt-0">
+            <div className={`${sizeClasses.paragraph} font-serif font-bold text-foreground leading-relaxed mb-2`} style={{ lineHeight: '1.9' }}>
+              {pointNumber}. {processedContent}
+            </div>
+          </div>
+        );
+        lastWasTitle = false;
+        return;
+      }
+      
+      // Detectar listas con viñetas normales (-)
       if (trimmedLine.startsWith('- ')) {
         const content = trimmedLine.substring(2);
         // Procesar negritas dentro de la lista
@@ -293,19 +262,24 @@ function FormattedAnswer({
         parts.push(text.substring(lastIndex, match.index));
       }
       
-      // Agregar enlace con scroll suave
+      // Agregar enlace con scroll suave y highlight
       parts.push(
         <a
           key={`link-${match.tesisIndex}-${match.index}-${idx}`}
           href={`#tesis-${match.tesisIndex}`}
           onClick={(e) => {
             e.preventDefault();
+            // Llamar a la función de callback si existe
+            if (onReferenceClick) {
+              onReferenceClick(match.tesisIndex);
+            }
+            // Scroll a la ficha en el sidebar
             const element = document.getElementById(`tesis-${match.tesisIndex}`);
             if (element) {
-              element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              element.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
           }}
-          className="text-primary hover:text-primary/80 underline decoration-muted-foreground/30 hover:decoration-primary/50 transition-colors font-bold"
+          className="text-primary hover:text-primary/80 underline decoration-muted-foreground/30 hover:decoration-primary/50 transition-colors font-bold cursor-pointer"
         >
           [{match.tesisIndex}]
         </a>
@@ -325,92 +299,7 @@ function FormattedAnswer({
   return (
     <div className="formatted-answer">
       {formatText(mainText)}
-      
-      {/* Sección de Referencias */}
-      {parsedReferences.length > 0 && (
-        <div className="mt-8 pt-6 border-t border-border">
-          <h3 className="text-lg font-serif font-bold text-foreground mb-4">Referencias</h3>
-          <div className="space-y-4">
-            {parsedReferences.map((ref) => (
-              <ReferenceCard key={ref.number} reference={ref} />
-            ))}
-          </div>
-        </div>
-      )}
-      
-      {/* Sección de Sugerencias */}
-      {suggestions.length > 0 && (
-        <div className="mt-6 pt-6 border-t border-border">
-          <h3 className="text-lg font-serif font-bold text-foreground mb-4">Preguntas de seguimiento</h3>
-          <div className="flex flex-wrap gap-2">
-            {suggestions.map((suggestion, idx) => (
-              <SuggestionButton key={idx} suggestion={suggestion} onClick={onSuggestionClick} />
-            ))}
-          </div>
-        </div>
-      )}
     </div>
-  );
-}
-
-// Componente para mostrar una referencia
-function ReferenceCard({ reference }: { reference: ParsedReference }) {
-  const [copied, setCopied] = useState(false);
-  const sjfUrl = `https://sjf2.scjn.gob.mx/detalle/tesis/${reference.registro}`;
-  
-  const citationText = `Tesis ${reference.tesis} | ${reference.rubro} | Registro: ${reference.registro} | Época: ${reference.epoca} | Materia: ${reference.materia} | Instancia: ${reference.instancia}`;
-  
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(citationText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-  
-  return (
-    <Card className="border-border bg-secondary/30">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 space-y-2">
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-sm font-serif font-semibold">
-                [{reference.number}]
-              </Badge>
-              <Badge variant={reference.tipo === 'jurisprudencia' ? 'default' : 'secondary'} className="text-xs">
-                {reference.tipo === 'jurisprudencia' ? 'Jurisprudencia' : 'Tesis Aislada'}
-              </Badge>
-            </div>
-            <h4 className="font-semibold text-base text-foreground font-serif leading-snug">
-              {reference.rubro}
-            </h4>
-            <div className="text-sm text-muted-foreground font-serif space-y-1">
-              <p><span className="font-medium">Número de tesis:</span> {reference.tesis}</p>
-              <p><span className="font-medium">Registro digital:</span> {reference.registro}</p>
-              <p><span className="font-medium">Época:</span> {reference.epoca}</p>
-              <p><span className="font-medium">Materia:</span> {reference.materia}</p>
-              <p><span className="font-medium">Instancia:</span> {reference.instancia}</p>
-            </div>
-            <a
-              href={sjfUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-primary hover:underline text-sm font-serif"
-            >
-              Ver en Semanario Judicial de la Federación
-              <FileText className="h-3 w-3" />
-            </a>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleCopy}
-            className="gap-2 font-serif shrink-0"
-          >
-            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            {copied ? 'Copiado' : 'Copiar'}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
 
@@ -456,10 +345,12 @@ function UserMessage({ message }: { message: ChatMessage }) {
 // Componente para mensaje de Atenea
 function AssistantMessage({ 
   message, 
-  onSuggestionClick 
+  onSuggestionClick,
+  onReferenceClick
 }: { 
   message: ChatMessage; 
   onSuggestionClick?: (suggestion: string) => void;
+  onReferenceClick?: (index: number) => void;
 }) {
   const response = message.response;
   const { t } = useLanguage();
@@ -473,6 +364,7 @@ function AssistantMessage({
               text={message.content} 
               tesisUsed={response.tesisUsed}
               onSuggestionClick={onSuggestionClick}
+              onReferenceClick={onReferenceClick}
             />
           ) : (
             <p className="text-sm sm:text-base font-serif leading-relaxed whitespace-pre-wrap">
@@ -481,80 +373,206 @@ function AssistantMessage({
           )}
         </div>
         
-        {/* Tesis & Precedentes Used */}
-        {response && response.tesisUsed.length > 0 && (
-          <Card className="border-border bg-secondary/30 shadow-sm">
-            <CardHeader className="p-4 sm:p-6 pb-3">
-              <CardTitle className="flex flex-wrap items-center gap-3 text-foreground text-lg sm:text-xl font-serif font-semibold">
-                <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
-                {t('search.tesisSupport')}
-                <Badge variant="secondary" className="text-xs font-serif">{response.tesisUsed.length}</Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 sm:p-6 pt-0">
-              <div className="space-y-2">
-                {response.tesisUsed.map((item, index) => {
-                  const isPrecedente = item.source === "precedente";
-                  return (
-                    <Card key={item.id} id={`tesis-${index + 1}`} className="border-border bg-card/50">
-                      <CardContent className="p-3 sm:p-4">
-                        <div className="flex flex-col gap-2">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant="outline" className="text-xs font-serif font-semibold">
-                              #{index + 1}
-                            </Badge>
-                            <Badge variant={isPrecedente ? "default" : "secondary"} className="text-xs font-serif">
-                              {isPrecedente ? t('search.sourcePrecedente') : t('search.sourceTesis')}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground font-serif">
-                              {t('search.relevance')}: {(item.relevanceScore * 100).toFixed(1)}%
-                            </span>
-                          </div>
-                          <h4 className="font-bold text-sm sm:text-base text-foreground font-serif break-words leading-snug">
-                            {item.title}
-                          </h4>
-                          <div className="flex flex-wrap items-center gap-2">
-                            {item.citation && (
-                              <details className="group">
-                                <summary className="cursor-pointer text-xs text-muted-foreground font-serif hover:text-foreground transition-colors list-none">
-                                  <span className="inline-flex items-center gap-1 underline">
-                                    Ver cita completa
-                                  </span>
-                                </summary>
-                                <div className="mt-2 p-3 bg-muted/50 rounded-md border border-border">
-                                  <p className="text-xs text-foreground font-serif leading-relaxed whitespace-pre-wrap">
-                                    {item.citation}
-                                  </p>
-                                </div>
-                              </details>
-                            )}
-                            {isPrecedente ? (
-                              <Link href={`/precedente/${item.id}`}>
-                                <Button variant="outline" size="sm" className="gap-1.5 font-serif text-xs h-7">
-                                  <FileText className="h-3 w-3" />
-                                  {t('search.viewPrecedente')}
-                                </Button>
-                              </Link>
-                            ) : (
-                              <Link href={`/tesis/${item.id}`}>
-                                <Button variant="outline" size="sm" className="gap-1.5 font-serif text-xs h-7">
-                                  <FileText className="h-3 w-3" />
-                                  {t('search.viewFull')}
-                                </Button>
-                              </Link>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
     </div>
+  );
+}
+
+// Interfaz para documentos guardados
+export interface SavedDocument {
+  id: string;
+  title: string;
+  citation: string;
+  source: "tesis" | "precedente";
+  savedAt: number;
+  relevanceScore?: number;
+}
+
+// Funciones para manejar documentos guardados (exportadas para uso en otras páginas)
+export const SAVED_DOCUMENTS_KEY = 'atenea_saved_documents';
+
+export const getSavedDocuments = (): SavedDocument[] => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const saved = localStorage.getItem(SAVED_DOCUMENTS_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+};
+
+export const saveDocument = (doc: Omit<SavedDocument, 'savedAt'>): boolean => {
+  if (typeof window === 'undefined') return false;
+  try {
+    const saved = getSavedDocuments();
+    // Verificar si ya está guardado
+    if (saved.some(d => d.id === doc.id && d.source === doc.source)) {
+      return false; // Ya está guardado
+    }
+    saved.push({ ...doc, savedAt: Date.now() });
+    localStorage.setItem(SAVED_DOCUMENTS_KEY, JSON.stringify(saved));
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+export const removeDocument = (id: string, source: "tesis" | "precedente"): boolean => {
+  if (typeof window === 'undefined') return false;
+  try {
+    const saved = getSavedDocuments();
+    const filtered = saved.filter(d => !(d.id === id && d.source === source));
+    localStorage.setItem(SAVED_DOCUMENTS_KEY, JSON.stringify(filtered));
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+export const isDocumentSaved = (id: string, source: "tesis" | "precedente"): boolean => {
+  if (typeof window === 'undefined') return false;
+  const saved = getSavedDocuments();
+  return saved.some(d => d.id === id && d.source === source);
+};
+
+// Componente para mostrar una tesis usada en la sección de fuentes
+function TesisUsedCard({ 
+  item, 
+  index, 
+  t,
+  isHighlighted = false
+}: { 
+  item: { id: string; title: string; citation: string; relevanceScore: number; source?: "tesis" | "precedente" }; 
+  index: number; 
+  t: (key: string) => string;
+  isHighlighted?: boolean;
+}) {
+  const [showFullTitle, setShowFullTitle] = useState(false);
+  const [isSaved, setIsSaved] = useState(() => isDocumentSaved(item.id, item.source || "tesis"));
+  const { toast } = useToast();
+  const isPrecedente = item.source === "precedente";
+  
+  // Actualizar estado cuando cambie el item
+  useEffect(() => {
+    setIsSaved(isDocumentSaved(item.id, item.source || "tesis"));
+  }, [item.id, item.source]);
+  
+  // Truncar título si es muy largo (120 caracteres)
+  const MAX_TITLE_LENGTH = 120;
+  const shouldTruncate = item.title.length > MAX_TITLE_LENGTH;
+  const displayTitle = shouldTruncate && !showFullTitle 
+    ? item.title.substring(0, MAX_TITLE_LENGTH) + "..."
+    : item.title;
+  
+  return (
+    <Card 
+      id={`tesis-${index + 1}`} 
+      className={`border-border bg-card/50 transition-all duration-500 ${
+        isHighlighted 
+          ? 'border-primary border-2 shadow-lg shadow-primary/20 bg-primary/5' 
+          : 'border'
+      }`}
+    >
+      <CardContent className="p-2.5 sm:p-3">
+        <div className="space-y-2">
+          {/* Header con número, tipo y relevancia */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge variant="outline" className="text-xs font-serif font-semibold px-2 py-0.5">
+              #{index + 1}
+            </Badge>
+            <Badge variant={isPrecedente ? "default" : "secondary"} className="text-xs font-serif px-2 py-0.5">
+              {isPrecedente ? t('search.sourcePrecedente') : t('search.sourceTesis')}
+            </Badge>
+            <span className="text-xs text-muted-foreground font-serif">
+              {(item.relevanceScore * 100).toFixed(1)}%
+            </span>
+          </div>
+          
+          {/* Título (truncado si es muy largo) */}
+          <div>
+            <h4 className="font-bold text-sm text-foreground font-serif break-words leading-snug">
+              {displayTitle}
+            </h4>
+            {shouldTruncate && (
+              <button
+                onClick={() => setShowFullTitle(!showFullTitle)}
+                className="text-xs text-primary hover:underline font-serif mt-0.5"
+              >
+                {showFullTitle ? 'Menos' : 'Más'}
+              </button>
+            )}
+          </div>
+          
+          {/* Botones de acción */}
+          <div className="pt-1.5 border-t border-border flex gap-2">
+            {isPrecedente ? (
+              <Link href={`/precedente/${item.id}`} className="flex-1">
+                <Button variant="outline" size="sm" className="gap-1.5 font-serif text-xs h-7 px-3 w-full">
+                  <FileText className="h-3.5 w-3.5" />
+                  {t('search.viewPrecedente')}
+                </Button>
+              </Link>
+            ) : (
+              <Link href={`/tesis/${item.id}`} className="flex-1">
+                <Button variant="outline" size="sm" className="gap-1.5 font-serif text-xs h-7 px-3 w-full">
+                  <FileText className="h-3.5 w-3.5" />
+                  {t('search.viewFull')}
+                </Button>
+              </Link>
+            )}
+            <Button
+              variant={isSaved ? "default" : "outline"}
+              size="sm"
+              className="gap-1.5 font-serif text-xs h-7 px-3"
+              onClick={() => {
+                const source = item.source || "tesis";
+                if (isSaved) {
+                  if (removeDocument(item.id, source)) {
+                    setIsSaved(false);
+                    toast({
+                      title: "Documento eliminado",
+                      description: "El documento se ha eliminado de tu biblioteca",
+                    });
+                  }
+                } else {
+                  if (saveDocument({
+                    id: item.id,
+                    title: item.title,
+                    citation: item.citation,
+                    source: source,
+                    relevanceScore: item.relevanceScore,
+                  })) {
+                    setIsSaved(true);
+                    toast({
+                      title: "Documento guardado",
+                      description: "El documento se ha guardado en tu biblioteca",
+                    });
+                  } else {
+                    toast({
+                      title: "Error",
+                      description: "No se pudo guardar el documento",
+                      variant: "destructive",
+                    });
+                  }
+                }
+              }}
+            >
+              {isSaved ? (
+                <>
+                  <BookmarkCheck className="h-3.5 w-3.5" />
+                  Guardado
+                </>
+              ) : (
+                <>
+                  <Bookmark className="h-3.5 w-3.5" />
+                  Guardar
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -588,12 +606,6 @@ function CopyCitationButton({ text, label }: { text: string; label: string }) {
   );
 }
 
-const EXAMPLE_QUESTIONS = [
-  "¿Qué es el amparo directo?",
-  "¿Cuándo procede la suspensión en juicio de amparo?",
-  "¿Qué es el interés jurídico en amparo?",
-];
-
 const STORAGE_KEY = "atenea_rag_search";
 
 // Interfaz para mensajes del chat
@@ -620,8 +632,27 @@ export default function Ask() {
   const [totalTimeSeconds, setTotalTimeSeconds] = useState<number | null>(null);
   const [startTime, setStartTime] = useState<number | null>(null);
   
+  // Estado para el sidebar de fuentes (móvil)
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  // Estado para resaltar una ficha cuando se hace click en una referencia
+  const [highlightedSourceIndex, setHighlightedSourceIndex] = useState<number | null>(null);
+  
   const { toast } = useToast();
   const { t } = useLanguage();
+  
+  // Obtener fuentes de la última respuesta de Atenea
+  const lastAssistantMessage = messages.filter(m => m.role === 'assistant').pop();
+  const currentSources = lastAssistantMessage?.response?.tesisUsed || [];
+  
+  // Función para manejar clicks en referencias [1], [2], etc.
+  const handleReferenceClick = (index: number) => {
+    setHighlightedSourceIndex(index);
+    // Remover el highlight después de 3 segundos
+    setTimeout(() => {
+      setHighlightedSourceIndex(null);
+    }, 3000);
+  };
 
   const mutation = useMutation({
     mutationFn: async (data: { question: string }) => {
@@ -683,6 +714,91 @@ export default function Ask() {
       });
     },
   });
+
+  // Función para guardar la búsqueda en el historial
+  const handleSaveSearch = async () => {
+    if (messages.length === 0) {
+      toast({
+        title: "No hay búsqueda para guardar",
+        description: "Realiza una búsqueda primero",
+        variant: "default",
+      });
+      return;
+    }
+
+    try {
+      // Obtener la primera pregunta del usuario
+      const firstUserMessage = messages.find(m => m.role === 'user');
+      const firstAssistantMessage = messages.find(m => m.role === 'assistant');
+      
+      if (!firstUserMessage || !firstAssistantMessage) {
+        toast({
+          title: "Error",
+          description: "No se pudo guardar la búsqueda",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Guardar en localStorage con un ID único
+      const searchId = `search-${Date.now()}`;
+      const searchData = {
+        id: searchId,
+        question: firstUserMessage.content,
+        answer: firstAssistantMessage.content,
+        messages: messages,
+        tesisUsed: firstAssistantMessage.response?.tesisUsed || [],
+        timestamp: Date.now(),
+      };
+
+      // Obtener búsquedas guardadas existentes
+      const savedSearchesKey = "atenea_saved_searches";
+      const existingSearches = localStorage.getItem(savedSearchesKey);
+      const searches = existingSearches ? JSON.parse(existingSearches) : [];
+      searches.push(searchData);
+      
+      // Guardar solo las últimas 50 búsquedas
+      const limitedSearches = searches.slice(-50);
+      localStorage.setItem(savedSearchesKey, JSON.stringify(limitedSearches));
+
+      toast({
+        title: "Búsqueda guardada",
+        description: "La búsqueda se ha guardado en tu historial",
+        variant: "default",
+      });
+    } catch (error) {
+      console.error("Error saving search:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo guardar la búsqueda",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Función para limpiar el chat
+  const handleClearChat = () => {
+    if (messages.length === 0) {
+      return;
+    }
+
+    // Confirmar antes de limpiar
+    if (window.confirm("¿Estás seguro de que quieres limpiar esta conversación?")) {
+      setMessages([]);
+      setQuestion("");
+      
+      // Limpiar localStorage
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+
+      toast({
+        title: "Chat limpiado",
+        description: "La conversación ha sido eliminada",
+        variant: "default",
+      });
+    }
+  };
 
   // Contador de tiempo mientras se genera la respuesta
   useEffect(() => {
@@ -754,51 +870,84 @@ export default function Ask() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, mutation.isPending]);
 
-  const handleExampleClick = (text: string) => {
-    setQuestion(text);
-  };
-  
   const handleSuggestionClick = (suggestion: string) => {
     setQuestion(suggestion);
   };
-  
-  const showExamples = messages.length === 0 && !mutation.isPending;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Header - Solo mostrar si no hay mensajes */}
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
+      {/* Estado inicial - Centrado estilo ChatGPT */}
       {messages.length === 0 && (
-        <div className="container mx-auto px-4 sm:px-6 pt-6 sm:pt-8 pb-4">
-          <div className="max-w-4xl mx-auto space-y-3 sm:space-y-4">
-            <div className="space-y-1.5 sm:space-y-2 animate-fade-up" style={{ animationDelay: '0.1s' }}>
-              <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-semibold text-foreground leading-tight">
+        <div className="h-full flex flex-col items-center justify-center px-4 sm:px-6 py-4 pb-32">
+          <div className="w-full max-w-3xl mx-auto space-y-6">
+            {/* Título centrado */}
+            <div className="text-center space-y-6 animate-fade-up" style={{ animationDelay: '0.1s' }}>
+              <h1 className="font-serif text-2xl sm:text-3xl md:text-4xl font-semibold text-foreground leading-tight">
                 {t('search.title')}
               </h1>
-              <div className="space-y-3 sm:space-y-4 text-muted-foreground font-serif">
-                <p className="text-sm sm:text-base leading-relaxed">
-                  {t('search.description1').split('Inteligencia Artificial (AI)').map((part, i, arr) => 
-                    i === arr.length - 1 ? part : (
-                      <React.Fragment key={i}>
-                        {part}
-                        <strong className="text-foreground font-semibold">Inteligencia Artificial (AI)</strong>
-                      </React.Fragment>
-                    )
-                  )}
-                </p>
-                <p className="text-sm sm:text-base leading-relaxed">
-                  {t('search.description2')}
-                </p>
-              </div>
+              <p className="text-base sm:text-lg text-muted-foreground font-serif max-w-2xl mx-auto">
+                {t('search.description2')}
+              </p>
+            </div>
+            
+            {/* Barra de búsqueda centrada */}
+            <div className="animate-fade-up" style={{ animationDelay: '0.3s' }}>
+              <Card className="border-border bg-card shadow-lg">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="space-y-4">
+                    <Textarea
+                      id="question-input"
+                      value={question}
+                      onChange={(e) => setQuestion(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                          e.preventDefault();
+                          handleSearch();
+                        }
+                      }}
+                      placeholder={t('search.questionPlaceholder')}
+                      className="min-h-[120px] max-h-[300px] resize-none text-base sm:text-lg font-serif leading-relaxed border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-0 focus-visible:ring-0"
+                    />
+                    <div className="flex flex-col items-center gap-2">
+                      <Button
+                        type="button"
+                        size="lg"
+                        variant="navy"
+                        className="gap-2 text-base font-serif px-8"
+                        disabled={mutation.isPending || question.trim().length < 10}
+                        onClick={handleSearch}
+                      >
+                        {mutation.isPending ? (
+                          <>
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                            {t('search.generating')}
+                          </>
+                        ) : (
+                          <>
+                            <Search className="h-5 w-5" />
+                            {t('search.button')}
+                          </>
+                        )}
+                      </Button>
+                      <p className="text-xs text-muted-foreground font-serif">
+                        Presiona Cmd/Ctrl + Enter para enviar
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>
       )}
       
-      {/* Chat Area */}
-      <div className="flex-1 container mx-auto px-4 sm:px-6 py-4 sm:py-6 overflow-y-auto">
-        <div className="max-w-4xl mx-auto">
-          {/* Messages */}
-          <div className="space-y-4">
+      {/* Main Content Area - Chat + Sidebar */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Chat Area */}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 pb-32">
+          <div className="max-w-4xl mx-auto">
+            {/* Messages */}
+            <div className="space-y-4">
             {messages.map((message) => (
               <React.Fragment key={message.id}>
                 {message.role === 'user' ? (
@@ -807,6 +956,7 @@ export default function Ask() {
                   <AssistantMessage 
                     message={message} 
                     onSuggestionClick={handleSuggestionClick}
+                    onReferenceClick={handleReferenceClick}
                   />
                 )}
               </React.Fragment>
@@ -818,11 +968,14 @@ export default function Ask() {
                 <div className="max-w-[85%] sm:max-w-[75%]">
                   <div className="bg-card border border-border rounded-lg rounded-tl-none p-4 shadow-sm">
                     <div className="flex items-center gap-3">
-                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                      <span className="text-sm text-muted-foreground font-serif">
+                      <div className="relative">
+                        <div className="w-2 h-2 rounded-full bg-primary/80"></div>
+                        <div className="absolute inset-0 w-2 h-2 rounded-full bg-primary/40 animate-ping"></div>
+                      </div>
+                      <span className="text-sm text-muted-foreground font-serif font-mono tabular-nums">
                         {elapsedSeconds < 60
-                          ? `Generando respuesta... ${elapsedSeconds.toFixed(1)}s`
-                          : `Generando respuesta... ${Math.floor(elapsedSeconds / 60)}m ${(elapsedSeconds % 60).toFixed(1)}s`
+                          ? `${elapsedSeconds.toFixed(1)}s`
+                          : `${Math.floor(elapsedSeconds / 60)}m ${(elapsedSeconds % 60).toFixed(1)}s`
                         }
                       </span>
                     </div>
@@ -854,34 +1007,131 @@ export default function Ask() {
             
             <div ref={messagesEndRef} />
           </div>
-          
-          {/* Example Questions - Solo mostrar si no hay mensajes */}
-          {showExamples && (
-            <div className="mt-8 pt-6 border-t border-border animate-fade-up" style={{ animationDelay: '0.5s' }}>
-              <p className="text-sm sm:text-base text-muted-foreground uppercase tracking-wider font-serif font-semibold mb-4 sm:mb-5">
-                {t('search.examples')}
-              </p>
-              <div className="grid gap-3 sm:gap-4">
-                {EXAMPLE_QUESTIONS.map((example, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => handleExampleClick(example)}
-                    className="w-full text-left p-4 sm:p-5 rounded-lg border border-border bg-card hover:bg-accent hover:border-accent-border transition-all text-sm sm:text-base font-serif text-foreground leading-relaxed"
-                  >
-                    {example}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
+        </div>
+        
+        {/* Sidebar de Fuentes - Desktop (sticky) */}
+        {currentSources.length > 0 && (
+          <>
+            {/* Desktop Sidebar */}
+            <aside className="hidden lg:block w-[450px] border-l border-border bg-background overflow-y-auto">
+              <div className="sticky top-0 p-4 sm:p-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-serif font-bold text-foreground flex items-center gap-2">
+                      <BookOpen className="h-5 w-5 text-muted-foreground" />
+                      Fuentes
+                    </h3>
+                    <Badge variant="secondary" className="text-xs font-serif">
+                      {currentSources.length}
+                    </Badge>
+                  </div>
+                  <div className="space-y-2">
+                    {currentSources.map((item, index) => (
+                      <TesisUsedCard 
+                        key={item.id} 
+                        item={item} 
+                        index={index} 
+                        t={t}
+                        isHighlighted={highlightedSourceIndex === index + 1}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </aside>
+            
+            {/* Mobile Sidebar Button */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden fixed bottom-24 right-4 z-40 bg-primary text-primary-foreground rounded-full p-3 shadow-lg hover:bg-primary/90 transition-colors"
+              aria-label="Ver fuentes"
+            >
+              <BookOpen className="h-5 w-5" />
+              {currentSources.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center font-semibold">
+                  {currentSources.length}
+                </span>
+              )}
+            </button>
+            
+            {/* Mobile Sidebar Drawer */}
+            {sidebarOpen && (
+              <>
+                <div 
+                  className="lg:hidden fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
+                  onClick={() => setSidebarOpen(false)}
+                />
+                <aside className="lg:hidden fixed right-0 top-0 h-full w-[450px] bg-background border-l border-border shadow-xl z-50 overflow-y-auto">
+                  <div className="p-4 sm:p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-serif font-bold text-foreground flex items-center gap-2">
+                        <BookOpen className="h-5 w-5 text-muted-foreground" />
+                        Fuentes
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs font-serif">
+                          {currentSources.length}
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSidebarOpen(false)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {currentSources.map((item, index) => (
+                        <TesisUsedCard 
+                          key={item.id} 
+                          item={item} 
+                          index={index} 
+                          t={t}
+                          isHighlighted={highlightedSourceIndex === index + 1}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </aside>
+              </>
+            )}
+          </>
+        )}
       </div>
       
-      {/* Input Bar - Fixed at bottom */}
-      <div className="border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      {/* Input Bar - Fixed at bottom (siempre visible) */}
+      <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-30">
         <div className="container mx-auto px-4 sm:px-6 py-4">
           <div className="max-w-4xl mx-auto">
+            {/* Botones de acción - Solo mostrar si hay mensajes */}
+            {messages.length > 0 && (
+              <div className="flex gap-2 mb-3 justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 text-xs font-serif"
+                  onClick={handleSaveSearch}
+                >
+                  <Save className="h-3.5 w-3.5" />
+                  Guardar búsqueda
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 text-xs font-serif text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={handleClearChat}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Limpiar chat
+                </Button>
+              </div>
+            )}
+            
             <div className="flex gap-3 items-end">
               <div className="flex-1">
                 <Textarea

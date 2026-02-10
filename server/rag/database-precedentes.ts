@@ -416,14 +416,35 @@ export async function hybridSearchPrecedentes(
     }
   });
 
+  // Combinar scores: usar promedio ponderado de los scores normalizados (mismo cálculo que en tesis)
   const combined: PrecedenteHybridResult[] = Array.from(chunkData.entries()).map(([chunkId, data]) => {
     const vScore = vectorScores.get(chunkId) || 0;
     const tScore = textScores.get(chunkId) || 0;
+    
+    // Obtener el score base normalizado (antes de multiplicar por weight)
+    const baseVectorScore = vScore > 0 ? vScore / vectorWeight : 0;
+    const baseTextScore = tScore > 0 ? tScore / textWeight : 0;
+    
+    // Combinar usando promedio ponderado de los scores base normalizados
+    let combinedScore: number;
+    if (baseVectorScore > 0 && baseTextScore > 0) {
+      combinedScore = baseVectorScore * 0.7 + baseTextScore * 0.3;
+    } else if (baseVectorScore > 0) {
+      combinedScore = baseVectorScore;
+    } else if (baseTextScore > 0) {
+      combinedScore = baseTextScore;
+    } else {
+      combinedScore = 0;
+    }
+    
+    // Asegurar que esté en rango 0-1
+    combinedScore = Math.max(0, Math.min(1.0, combinedScore));
+    
     return {
       ...data,
       vectorScore: vScore,
       textScore: tScore,
-      combinedScore: vScore + tScore,
+      combinedScore,
     };
   });
 
