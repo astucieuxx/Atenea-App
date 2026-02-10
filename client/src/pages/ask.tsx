@@ -11,8 +11,28 @@ import type { AskResponse } from "@shared/schema";
 import { Link } from "wouter";
 import { useLanguage } from "@/contexts/language-context";
 
+// Interfaz para referencias parseadas
+interface ParsedReference {
+  number: number;
+  tipo: string;
+  tesis: string;
+  rubro: string;
+  registro: string;
+  epoca: string;
+  materia: string;
+  instancia: string;
+}
+
 // Componente para formatear la respuesta con estilo profesional
-function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{ id: string; title: string; citation: string }> }) {
+function FormattedAnswer({ 
+  text, 
+  tesisUsed, 
+  onSuggestionClick 
+}: { 
+  text: string; 
+  tesisUsed: Array<{ id: string; title: string; citation: string }>; 
+  onSuggestionClick?: (suggestion: string) => void;
+}) {
   // Tamaño de fuente fijo: pequeño
   const sizeClasses = {
     title: "text-xl sm:text-2xl",
@@ -20,11 +40,54 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
     list: "text-sm sm:text-base",
   };
   
-  // Crear un mapa de tesis por ID para buscar referencias [ID: xxx]
+  // Crear un mapa de tesis por ID para buscar referencias [ID: xxx] (compatibilidad)
   const tesisMapById = new Map(tesisUsed.map((t, idx) => [t.id, { ...t, index: idx + 1 }]));
   
   // Crear un mapa de tesis por título para buscar referencias por título
   const tesisMapByTitle = new Map(tesisUsed.map((t, idx) => [t.title.toLowerCase(), { ...t, index: idx + 1 }]));
+  
+  // Parsear secciones REFERENCIAS: y SUGERENCIAS: (SUGERENCIAS puede venir antes o después)
+  const suggestionsMatch = text.match(/SUGERENCIAS:\s*\n(.+?)(?:\n\n|\nREFERENCIAS:|$)/is);
+  const referencesMatch = text.match(/REFERENCIAS:\s*\n((?:\[.*?\]\s*\|.*?\n?)+)/is);
+  
+  // Extraer referencias parseadas
+  const parsedReferences: ParsedReference[] = [];
+  if (referencesMatch) {
+    const referencesText = referencesMatch[1];
+    const referenceLines = referencesText.split('\n').filter(line => line.trim().startsWith('['));
+    
+    referenceLines.forEach(line => {
+      const match = line.match(/\[(\d+)\]\s*\|\s*tipo:\s*([^|]+)\s*\|\s*tesis:\s*([^|]+)\s*\|\s*rubro:\s*([^|]+)\s*\|\s*registro:\s*([^|]+)\s*\|\s*epoca:\s*([^|]+)\s*\|\s*materia:\s*([^|]+)\s*\|\s*instancia:\s*(.+?)(?:\s*\|.*)?$/);
+      if (match) {
+        parsedReferences.push({
+          number: parseInt(match[1], 10),
+          tipo: match[2].trim(),
+          tesis: match[3].trim(),
+          rubro: match[4].trim(),
+          registro: match[5].trim(),
+          epoca: match[6].trim(),
+          materia: match[7].trim(),
+          instancia: match[8].trim(),
+        });
+      }
+    });
+  }
+  
+  // Extraer sugerencias
+  const suggestions: string[] = [];
+  if (suggestionsMatch) {
+    const suggestionsText = suggestionsMatch[1].trim();
+    suggestions.push(...suggestionsText.split('|').map(s => s.trim()).filter(s => s.length > 0));
+  }
+  
+  // Remover secciones REFERENCIAS: y SUGERENCIAS: del texto principal
+  let mainText = text;
+  if (referencesMatch) {
+    mainText = mainText.replace(/REFERENCIAS:.*$/is, '').trim();
+  }
+  if (suggestionsMatch) {
+    mainText = mainText.replace(/SUGERENCIAS:.*$/is, '').trim();
+  }
   
   // Función para procesar el texto y convertirlo en elementos React
   const formatText = (text: string) => {
@@ -137,10 +200,18 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
     const parts: (string | JSX.Element)[] = [];
     let lastIndex = 0;
     
-    // Procesar referencias [ID: xxx] y [Precedente ID: xxx] y convertirlas a [#número]
-    // Los IDs pueden ser numéricos (tesis) o alfanuméricos (precedentes como wpE67psBmHFQL6iFfLa_)
-    const idRegex = /\[(?:Precedente\s+)?ID:\s*([^\]]+)\]/gi;
+    // Procesar referencias [1], [2], [3], etc. (nuevo formato) y [ID: xxx] (formato antiguo para compatibilidad)
     let processedText = text;
+    
+    // Primero procesar referencias numeradas [1], [2], etc.
+    const numberRefRegex = /\[(\d+)\]/g;
+    processedText = processedText.replace(numberRefRegex, (match, num) => {
+      // Convertir [1] a [#1] para que el procesador de enlaces lo maneje
+      return `[#${num}]`;
+    });
+    
+    // También procesar referencias [ID: xxx] para compatibilidad
+    const idRegex = /\[(?:Precedente\s+)?ID:\s*([^\]]+)\]/gi;
     const idMatches: Array<{ id: string; index: number; original: string }> = [];
 
     let idMatch;
@@ -253,8 +324,117 @@ function FormattedAnswer({ text, tesisUsed }: { text: string; tesisUsed: Array<{
   
   return (
     <div className="formatted-answer">
-      {formatText(text)}
+      {formatText(mainText)}
+      
+      {/* Sección de Referencias */}
+      {parsedReferences.length > 0 && (
+        <div className="mt-8 pt-6 border-t border-border">
+          <h3 className="text-lg font-serif font-bold text-foreground mb-4">Referencias</h3>
+          <div className="space-y-4">
+            {parsedReferences.map((ref) => (
+              <ReferenceCard key={ref.number} reference={ref} />
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {/* Sección de Sugerencias */}
+      {suggestions.length > 0 && (
+        <div className="mt-6 pt-6 border-t border-border">
+          <h3 className="text-lg font-serif font-bold text-foreground mb-4">Preguntas de seguimiento</h3>
+          <div className="flex flex-wrap gap-2">
+            {suggestions.map((suggestion, idx) => (
+              <SuggestionButton key={idx} suggestion={suggestion} onClick={onSuggestionClick} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+// Componente para mostrar una referencia
+function ReferenceCard({ reference }: { reference: ParsedReference }) {
+  const [copied, setCopied] = useState(false);
+  const sjfUrl = `https://sjf2.scjn.gob.mx/detalle/tesis/${reference.registro}`;
+  
+  const citationText = `Tesis ${reference.tesis} | ${reference.rubro} | Registro: ${reference.registro} | Época: ${reference.epoca} | Materia: ${reference.materia} | Instancia: ${reference.instancia}`;
+  
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(citationText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  
+  return (
+    <Card className="border-border bg-secondary/30">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 space-y-2">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-sm font-serif font-semibold">
+                [{reference.number}]
+              </Badge>
+              <Badge variant={reference.tipo === 'jurisprudencia' ? 'default' : 'secondary'} className="text-xs">
+                {reference.tipo === 'jurisprudencia' ? 'Jurisprudencia' : 'Tesis Aislada'}
+              </Badge>
+            </div>
+            <h4 className="font-semibold text-base text-foreground font-serif leading-snug">
+              {reference.rubro}
+            </h4>
+            <div className="text-sm text-muted-foreground font-serif space-y-1">
+              <p><span className="font-medium">Número de tesis:</span> {reference.tesis}</p>
+              <p><span className="font-medium">Registro digital:</span> {reference.registro}</p>
+              <p><span className="font-medium">Época:</span> {reference.epoca}</p>
+              <p><span className="font-medium">Materia:</span> {reference.materia}</p>
+              <p><span className="font-medium">Instancia:</span> {reference.instancia}</p>
+            </div>
+            <a
+              href={sjfUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-primary hover:underline text-sm font-serif"
+            >
+              Ver en Semanario Judicial de la Federación
+              <FileText className="h-3 w-3" />
+            </a>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCopy}
+            className="gap-2 font-serif shrink-0"
+          >
+            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            {copied ? 'Copiado' : 'Copiar'}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Componente para mostrar una sugerencia como botón
+function SuggestionButton({ 
+  suggestion, 
+  onClick 
+}: { 
+  suggestion: string; 
+  onClick?: (suggestion: string) => void;
+}) {
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className="font-serif text-sm"
+      onClick={() => {
+        if (onClick) {
+          onClick(suggestion);
+        }
+      }}
+    >
+      {suggestion}
+    </Button>
   );
 }
 
@@ -606,7 +786,21 @@ export default function Ask() {
                 </CardHeader>
                 <CardContent className="p-6 sm:p-8 pt-0">
                   <div className="prose prose-lg max-w-none">
-                    <FormattedAnswer text={result.answer} tesisUsed={result.tesisUsed} />
+                    <FormattedAnswer 
+                      text={result.answer} 
+                      tesisUsed={result.tesisUsed}
+                      onSuggestionClick={(suggestion) => {
+                        setQuestion(suggestion);
+                        // Scroll al input
+                        setTimeout(() => {
+                          const textarea = document.querySelector('textarea');
+                          if (textarea) {
+                            textarea.focus();
+                            textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }
+                        }, 100);
+                      }}
+                    />
                   </div>
                 </CardContent>
               </Card>
