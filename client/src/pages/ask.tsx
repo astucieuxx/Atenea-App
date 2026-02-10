@@ -946,7 +946,11 @@ export default function Ask() {
         {/* Chat + Sidebar Row */}
         <div className="flex-1 flex overflow-hidden">
           {/* Chat Area + Input Bar Container */}
-          <div className="flex-1 flex flex-col overflow-hidden">
+          <div className={`flex flex-col overflow-hidden ${
+            currentSources.length > 0 
+              ? 'lg:w-[calc(100%-450px)]' // Ancho fijo cuando hay sidebar
+              : 'flex-1'
+          }`}>
             {/* Chat Area */}
             <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6">
               <div className="max-w-4xl mx-auto">
