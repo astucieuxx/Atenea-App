@@ -952,7 +952,7 @@ export default function Ask() {
               : 'flex-1'
           }`}>
             {/* Chat Area */}
-            <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 pb-32">
+            <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 pb-40">
               <div className="max-w-4xl mx-auto">
                 {/* Messages */}
                 <div className="space-y-4">
