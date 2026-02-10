@@ -1101,7 +1101,7 @@ export default function Ask() {
           {currentSources.length > 0 && (
             <>
               {/* Desktop Sidebar */}
-              <aside className="hidden lg:block w-[450px] border-l border-border bg-background overflow-y-auto flex-shrink-0 z-30 relative">
+              <aside className="hidden lg:block w-[450px] border-l border-border bg-background overflow-y-auto flex-shrink-0 z-30 relative pb-40">
                 <div className="p-4 sm:p-6">
                   <div className="space-y-4">
                   <div className="flex items-center justify-between mb-4">
