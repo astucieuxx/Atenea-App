@@ -952,7 +952,7 @@ export default function Ask() {
               : 'flex-1'
           }`}>
             {/* Chat Area */}
-            <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 pb-40">
+            <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 pb-56">
               <div className="max-w-4xl mx-auto">
                 {/* Messages */}
                 <div className="space-y-4">
@@ -1101,7 +1101,7 @@ export default function Ask() {
           {currentSources.length > 0 && (
             <>
               {/* Desktop Sidebar */}
-              <aside className="hidden lg:block w-[450px] border-l border-border bg-background overflow-y-auto flex-shrink-0 z-30 relative pb-40">
+              <aside className="hidden lg:block w-[450px] border-l border-border bg-background overflow-y-auto flex-shrink-0 z-30 relative pb-56">
                 <div className="p-4 sm:p-6">
                   <div className="space-y-4">
                   <div className="flex items-center justify-between mb-4">
