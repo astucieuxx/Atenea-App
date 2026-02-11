@@ -679,15 +679,27 @@ export default function Ask() {
       return response as AskResponse;
     },
     onSuccess: (data, variables) => {
+      // If follow-up returned no sources, carry forward sources from the previous response
+      // so that [1], [2] references from the LLM still map to source cards
+      let responseData = data;
+      if (!data.tesisUsed || data.tesisUsed.length === 0) {
+        const lastWithSources = [...messages].reverse().find(
+          m => m.role === 'assistant' && m.response?.tesisUsed && m.response.tesisUsed.length > 0
+        );
+        if (lastWithSources?.response?.tesisUsed) {
+          responseData = { ...data, tesisUsed: lastWithSources.response.tesisUsed };
+        }
+      }
+
       // Agregar respuesta de Atenea al historial
       const assistantMessage: ChatMessage = {
         id: `msg-${Date.now()}-assistant`,
         role: 'assistant',
-        content: data.answer,
-        response: data,
+        content: responseData.answer,
+        response: responseData,
         timestamp: Date.now(),
       };
-      
+
       setMessages(prev => [...prev, assistantMessage]);
       
       // Guardar en localStorage
@@ -789,6 +801,7 @@ export default function Ask() {
     if (window.confirm("¿Estás seguro de que quieres limpiar esta conversación?")) {
       setMessages([]);
       setQuestion("");
+      sessionStartIndex.current = 0;
       
       // Limpiar localStorage
       if (typeof window !== "undefined") {
