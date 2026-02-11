@@ -620,6 +620,9 @@ interface ChatMessage {
 export default function Ask() {
   // Estado para el historial de conversación
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+
+  // Track the index where the current session starts (messages before this are from localStorage)
+  const sessionStartIndex = React.useRef<number>(0);
   
   // Estado para la pregunta actual en el input
   const [question, setQuestion] = useState("");
@@ -824,6 +827,8 @@ export default function Ask() {
           const parsed = JSON.parse(saved);
           if (parsed.messages && Array.isArray(parsed.messages)) {
             setMessages(parsed.messages);
+            // Mark where localStorage messages end - new session starts after these
+            sessionStartIndex.current = parsed.messages.length;
           }
         } catch {
           // Ignorar errores
@@ -861,10 +866,10 @@ export default function Ask() {
     // Limpiar input
     setQuestion("");
     
-    // Hacer la petición
-    // Build conversation history for server context (last 10 messages max)
-    const recentMessages = [...messages, userMessage].slice(-10);
-    const conversationHistory = recentMessages.map(m => ({
+    // Build conversation history: only messages from THIS session (not from localStorage)
+    const allMessages = [...messages, userMessage];
+    const currentSessionMessages = allMessages.slice(sessionStartIndex.current).slice(-10);
+    const conversationHistory = currentSessionMessages.map(m => ({
       role: m.role,
       content: m.content,
     }));
