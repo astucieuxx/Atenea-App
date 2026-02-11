@@ -1,31 +1,12 @@
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Search, ArrowRight } from "lucide-react";
 import { AteneaLogo } from "@/components/atenea-logo";
 import heroBg from "@/assets/hero-bg.jpg";
-import { useState } from "react";
 import { useLanguage } from "@/contexts/language-context";
 
 // FORZAR RECARGA - Botón Ver Demostración ELIMINADO - 2024
 export default function HeroSection() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [, setLocation] = useLocation();
   const { t } = useLanguage();
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim().length >= 3) {
-      // Guardar la query en localStorage para que /ask la lea
-      if (typeof window !== "undefined") {
-        localStorage.setItem("atenea_rag_search", JSON.stringify({
-          question: searchQuery.trim(),
-          timestamp: Date.now(),
-        }));
-      }
-      // Redirigir a /ask
-      setLocation("/ask");
-    }
-  };
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-20">
@@ -74,35 +55,8 @@ export default function HeroSection() {
             {t('landing.subtitle')}
           </p>
 
-          {/* Search Bar */}
-          <div className="max-w-2xl mx-auto mb-4 animate-fade-up" style={{ animationDelay: '0.4s' }}>
-            <form onSubmit={handleSearch} className="relative">
-              <div className="relative flex items-center bg-white backdrop-blur-lg border border-white/20 rounded-xl p-1.5" style={{ backgroundColor: '#ffffff' }}>
-                <Search className="w-4 h-4 text-foreground/80 ml-3" style={{ color: '#1a1a1a' }} />
-                <input 
-                  type="text" 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={t('landing.searchPlaceholder')}
-                  className="flex-1 bg-transparent border-none outline-none px-3 py-1.5 text-foreground placeholder:text-foreground/70 font-body text-sm"
-                  style={{ color: '#1a1a1a' }}
-                />
-                <Button 
-                  type="submit"
-                  variant="silver" 
-                  size="sm" 
-                  className="shrink-0 py-1.5"
-                  disabled={searchQuery.trim().length < 3}
-                >
-                  {t('landing.searchButton')}
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
-              </div>
-            </form>
-          </div>
-
           {/* Trust Indicators */}
-          <div className="flex flex-wrap justify-center gap-4 text-white/80 text-xs font-body mb-4 animate-fade-up" style={{ animationDelay: '0.5s' }}>
+          <div className="flex flex-wrap justify-center gap-4 text-white/80 text-xs font-body mb-8 animate-fade-up" style={{ animationDelay: '0.4s' }}>
             <span className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-silver-light" />
               {t('landing.trust.resolutions')}
@@ -117,15 +71,14 @@ export default function HeroSection() {
             </span>
           </div>
 
-          {/* CTA Button - SOLO PRUEBA GRATUITA */}
-          <div className="flex justify-center animate-fade-up" style={{ animationDelay: '0.6s' }}>
+          {/* CTA Button - SOLO PRUEBA GRATUITA - MÁS GRANDE */}
+          <div className="flex justify-center animate-fade-up" style={{ animationDelay: '0.5s' }}>
             <Link href="/ask">
               <Button 
                 variant="navy" 
-                size="sm" 
-                className="text-sm px-6 py-2"
+                size="lg" 
+                className="text-lg px-12 py-6 font-semibold text-center"
                 style={{ 
-                  display: 'block',
                   boxShadow: '0 0 20px rgba(31, 58, 81, 0.4), 0 4px 14px rgba(31, 58, 81, 0.3)'
                 }}
               >

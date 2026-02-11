@@ -1,66 +1,11 @@
-import { useState } from "react";
-import { useLocation, Link } from "wouter";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Loader2, FileText, Building2, Sparkles } from "lucide-react";
+import { Link } from "wouter";
+import { FileText, Building2, Sparkles } from "lucide-react";
 import ateneaLogo from "@/assets/atenea-logo.png";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import type { AnalysisResult } from "@shared/schema";
-
-const EXAMPLE_PROMPTS = [
-  {
-    text: "Tercero perjudicado no emplazado en juicio de amparo. ¿Procede la queja o el amparo?",
-  },
-  {
-    text: "Suplencia de la queja deficiente en materia agraria. ¿Cuál es su alcance en el amparo?",
-  },
-  {
-    text: "Suspensión del procedimiento en juicio de amparo. ¿Cuándo procede y quién puede solicitarla?",
-  },
-];
+import { useLanguage } from "@/contexts/language-context";
 
 export default function Home() {
-  const [descripcion, setDescripcion] = useState("");
-  const [, setLocation] = useLocation();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  const mutation = useMutation({
-    mutationFn: async (data: { descripcion: string }) => {
-      const response = await apiRequest("POST", "/api/analyze", data);
-      return response as AnalysisResult;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/history"] });
-      setLocation(`/analisis/${data.id}`);
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "No se pudo analizar el caso. Intente de nuevo.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (descripcion.trim().length < 10) {
-      toast({
-        title: "Descripción muy corta",
-        description: "Por favor proporcione una descripción más detallada del caso.",
-        variant: "destructive",
-      });
-      return;
-    }
-    mutation.mutate({ descripcion });
-  };
-
-  const handleExampleClick = (text: string) => {
-    setDescripcion(text);
-  };
+  const { t } = useLanguage();
 
   return (
     <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center px-4 py-16">
@@ -84,70 +29,21 @@ export default function Home() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Textarea
-            value={descripcion}
-            onChange={(e) => setDescripcion(e.target.value)}
-            placeholder="Describe el caso o problema jurídico que necesitas analizar..."
-            className="min-h-[120px] resize-none text-base bg-card border-border"
-            data-testid="textarea-caso"
-          />
-
-          <Button
-            type="submit"
-            size="lg"
-            className="w-full gap-2"
-            disabled={mutation.isPending || descripcion.trim().length < 10}
-            data-testid="button-analizar"
-          >
-            {mutation.isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Analizando...
-              </>
-            ) : (
-              <>
-                Analizar caso
-                <ArrowRight className="h-4 w-4" />
-              </>
-            )}
-          </Button>
-        </form>
-
-        <div className="space-y-4 pt-4">
-          <p className="text-xs text-muted-foreground text-center uppercase tracking-wider font-medium">
-            Ejemplos de consulta
-          </p>
-          <div className="space-y-2">
-            {EXAMPLE_PROMPTS.map((prompt, index) => (
-              <button
-                key={index}
-                type="button"
-                onClick={() => handleExampleClick(prompt.text)}
-                className="w-full text-left p-4 rounded-lg border border-border bg-card hover-elevate active-elevate-2 transition-colors flex items-start gap-3"
-                data-testid={`card-ejemplo-${index}`}
-              >
-                <FileText className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                <span className="text-sm text-foreground leading-relaxed">
-                  {prompt.text}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="pt-6 border-t border-border">
-          <div className="text-center space-y-3">
-            <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
-              O prueba la búsqueda RAG
-            </p>
-            <Link href="/ask">
-              <Button variant="outline" className="gap-2">
-                <Sparkles className="h-4 w-4" />
-                Búsqueda con IA y respuestas generadas
-              </Button>
-            </Link>
-          </div>
+        {/* Botón grande de Comenzar Prueba Gratuita */}
+        <div className="flex justify-center">
+          <Link href="/ask">
+            <Button 
+              variant="navy" 
+              size="lg" 
+              className="text-lg px-12 py-6 gap-3 font-semibold"
+              style={{ 
+                boxShadow: '0 0 20px rgba(31, 58, 81, 0.4), 0 4px 14px rgba(31, 58, 81, 0.3)'
+              }}
+            >
+              <Sparkles className="h-5 w-5" />
+              {t('landing.startFreeTrial')}
+            </Button>
+          </Link>
         </div>
 
         <footer className="flex items-center justify-center gap-6 pt-8 text-xs text-muted-foreground">
