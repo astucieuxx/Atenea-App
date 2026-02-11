@@ -955,8 +955,8 @@ export default function Ask() {
               : 'flex-1'
           }`}>
             {/* Chat Area */}
-            <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6" style={{ paddingBottom: messages.length > 0 ? '200px' : '0', scrollPaddingBottom: messages.length > 0 ? '200px' : '0' }}>
-              <div className="max-w-4xl mx-auto" style={{ paddingBottom: messages.length > 0 ? '200px' : '0' }}>
+            <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6">
+              <div className="max-w-4xl mx-auto">
                 {/* Messages */}
                 <div className="space-y-4">
             {messages.map((message) => (
@@ -1019,7 +1019,7 @@ export default function Ask() {
                 <div ref={messagesEndRef} />
                 {/* Spacer para que el scrollbar no llegue hasta la barra de búsqueda */}
                 {messages.length > 0 && (
-                  <div style={{ height: '200px', flexShrink: 0 }} />
+                  <div style={{ height: '180px', flexShrink: 0 }} />
                 )}
                 </div>
               </div>
@@ -1115,7 +1115,7 @@ export default function Ask() {
           {currentSources.length > 0 && (
             <>
               {/* Desktop Sidebar */}
-              <aside className="hidden lg:block w-[450px] border-l border-border bg-background overflow-y-auto flex-shrink-0 z-30 relative" style={{ paddingBottom: messages.length > 0 ? '200px' : '0' }}>
+              <aside className="hidden lg:block w-[450px] border-l border-border bg-background overflow-y-auto flex-shrink-0 z-30 relative">
                 <div className="p-4 sm:p-6">
                   <div className="space-y-4">
                   <div className="flex items-center justify-between mb-4">
@@ -1138,9 +1138,13 @@ export default function Ask() {
                       />
                     ))}
                   </div>
+                  {/* Spacer para que el scrollbar no llegue hasta la barra de búsqueda */}
+                  {messages.length > 0 && (
+                    <div style={{ height: '180px', flexShrink: 0 }} />
+                  )}
+                  </div>
                 </div>
-              </div>
-            </aside>
+              </aside>
             
             {/* Mobile Sidebar Button */}
             <button
@@ -1164,7 +1168,7 @@ export default function Ask() {
                   onClick={() => setSidebarOpen(false)}
                 />
                 <aside className="lg:hidden fixed right-0 top-0 h-full w-full sm:w-[85%] md:w-[450px] max-w-[450px] bg-background border-l border-border shadow-xl z-50 overflow-y-auto">
-                  <div className="p-4 sm:p-6" style={{ paddingBottom: '200px' }}>
+                  <div className="p-4 sm:p-6">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="text-base sm:text-lg font-serif font-bold text-foreground flex items-center gap-2">
                         <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
@@ -1195,6 +1199,10 @@ export default function Ask() {
                         />
                       ))}
                     </div>
+                    {/* Spacer para que el scrollbar no llegue hasta la barra de búsqueda */}
+                    {messages.length > 0 && (
+                      <div style={{ height: '180px', flexShrink: 0 }} />
+                    )}
                   </div>
                 </aside>
               </>
