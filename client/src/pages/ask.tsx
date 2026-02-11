@@ -932,7 +932,8 @@ export default function Ask() {
                         )}
                       </Button>
                       <p className="text-xs text-muted-foreground font-serif">
-                        Presiona Cmd/Ctrl + Enter para enviar
+                        <span className="hidden sm:inline">Presiona Enter para enviar, Shift+Enter para nueva línea</span>
+                        <span className="sm:hidden">Enter para enviar</span>
                       </p>
                     </div>
                   </div>
@@ -1028,76 +1029,81 @@ export default function Ask() {
             {messages.length > 0 && (
             <div className={`fixed bottom-0 left-0 border-t border-border bg-background z-20 ${
               currentSources.length > 0 
-                ? 'right-[450px] lg:right-[450px]' // Ancho respetando sidebar
+                ? 'lg:right-[450px] right-0' // En desktop respeta sidebar, en móvil ocupa todo el ancho
                 : 'right-0'
             }`}>
-              <div className="px-4 sm:px-6 py-4">
+              <div className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
                 <div className="max-w-4xl mx-auto">
                   {/* Botones de acción - Solo mostrar si hay mensajes */}
                   {messages.length > 0 && (
-                    <div className="flex gap-2 mb-3 justify-end">
+                    <div className="flex gap-2 mb-2 sm:mb-3 justify-end flex-wrap">
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="gap-2 text-xs font-serif"
+                        className="gap-1.5 text-xs font-serif h-8 px-2 sm:px-3"
                         onClick={handleSaveSearch}
                       >
-                        <Save className="h-3.5 w-3.5" />
-                        Guardar búsqueda
+                        <Save className="h-3 w-3" />
+                        <span className="hidden sm:inline">Guardar búsqueda</span>
+                        <span className="sm:hidden">Guardar</span>
                       </Button>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="gap-2 text-xs font-serif text-destructive hover:text-destructive hover:bg-destructive/10"
+                        className="gap-1.5 text-xs font-serif text-destructive hover:text-destructive hover:bg-destructive/10 h-8 px-2 sm:px-3"
                         onClick={handleClearChat}
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Limpiar chat
+                        <Trash2 className="h-3 w-3" />
+                        <span className="hidden sm:inline">Limpiar chat</span>
+                        <span className="sm:hidden">Limpiar</span>
                       </Button>
                     </div>
                   )}
                   
-                  <div className="flex gap-3 items-end">
-                    <div className="flex-1">
+                  <div className="flex gap-2 sm:gap-3 items-end">
+                    <div className="flex-1 min-w-0">
                       <Textarea
-                        id="question-input"
+                        id="question-input-fixed"
                         value={question}
                         onChange={(e) => setQuestion(e.target.value)}
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                          if (e.key === 'Enter' && !e.shiftKey) {
                             e.preventDefault();
-                            handleSearch();
+                            if (question.trim().length >= 10 && !mutation.isPending) {
+                              handleSearch();
+                            }
                           }
                         }}
                         placeholder={t('search.questionPlaceholder')}
-                        className="min-h-[60px] max-h-[200px] resize-none text-sm sm:text-base font-serif leading-relaxed border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-0 focus-visible:ring-0"
+                        className="min-h-[56px] sm:min-h-[60px] max-h-[200px] resize-none text-sm sm:text-base font-serif leading-relaxed border-border bg-card text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-0 focus-visible:ring-0 w-full"
                       />
                     </div>
                     <Button
                       type="button"
                       size="default"
                       variant="navy"
-                      className="gap-2 text-sm font-serif px-6 shrink-0"
+                      className="gap-2 text-sm font-serif px-4 sm:px-6 shrink-0 h-[56px] sm:h-auto"
                       disabled={mutation.isPending || question.trim().length < 10}
                       onClick={handleSearch}
                     >
                       {mutation.isPending ? (
                         <>
                           <Loader2 className="h-4 w-4 animate-spin" />
-                          {t('search.generating')}
+                          <span className="hidden sm:inline">{t('search.generating')}</span>
                         </>
                       ) : (
                         <>
                           <Search className="h-4 w-4" />
-                          {t('search.button')}
+                          <span className="hidden sm:inline">{t('search.button')}</span>
                         </>
                       )}
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2 font-serif">
-                    Presiona Cmd/Ctrl + Enter para enviar
+                  <p className="text-xs text-muted-foreground mt-1.5 sm:mt-2 font-serif text-center sm:text-left">
+                    <span className="hidden sm:inline">Presiona Enter para enviar, Shift+Enter para nueva línea</span>
+                    <span className="sm:hidden">Enter para enviar</span>
                   </p>
                 </div>
               </div>
@@ -1139,10 +1145,10 @@ export default function Ask() {
             {/* Mobile Sidebar Button */}
             <button
               onClick={() => setSidebarOpen(true)}
-              className="lg:hidden fixed bottom-24 right-4 z-40 bg-primary text-primary-foreground rounded-full p-3 shadow-lg hover:bg-primary/90 transition-colors"
+              className="lg:hidden fixed bottom-20 sm:bottom-24 right-3 sm:right-4 z-40 bg-primary text-primary-foreground rounded-full p-2.5 sm:p-3 shadow-lg hover:bg-primary/90 transition-colors"
               aria-label="Ver fuentes"
             >
-              <BookOpen className="h-5 w-5" />
+              <BookOpen className="h-4 w-4 sm:h-5 sm:w-5" />
               {currentSources.length > 0 && (
                 <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center font-semibold">
                   {currentSources.length}
@@ -1157,11 +1163,11 @@ export default function Ask() {
                   className="lg:hidden fixed inset-0 bg-background/80 backdrop-blur-sm z-50"
                   onClick={() => setSidebarOpen(false)}
                 />
-                <aside className="lg:hidden fixed right-0 top-0 h-full w-[450px] bg-background border-l border-border shadow-xl z-50 overflow-y-auto">
-                  <div className="p-4 sm:p-6">
+                <aside className="lg:hidden fixed right-0 top-0 h-full w-full sm:w-[85%] md:w-[450px] max-w-[450px] bg-background border-l border-border shadow-xl z-50 overflow-y-auto">
+                  <div className="p-4 sm:p-6" style={{ paddingBottom: '200px' }}>
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-serif font-bold text-foreground flex items-center gap-2">
-                        <BookOpen className="h-5 w-5 text-muted-foreground" />
+                      <h3 className="text-base sm:text-lg font-serif font-bold text-foreground flex items-center gap-2">
+                        <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
                         Fuentes
                       </h3>
                       <div className="flex items-center gap-2">
