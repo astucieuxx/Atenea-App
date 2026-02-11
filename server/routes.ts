@@ -237,20 +237,23 @@ export async function registerRoutes(
     let response: any = null;
     
     try {
-      const { question } = req.body;
-      
+      const { question, conversationHistory } = req.body;
+
       if (!question || typeof question !== "string" || question.trim().length < 10) {
-        return res.status(400).json({ 
-          error: "La pregunta debe ser una cadena de texto con al menos 10 caracteres." 
+        return res.status(400).json({
+          error: "La pregunta debe ser una cadena de texto con al menos 10 caracteres."
         });
       }
 
       const { askQuestion } = await import("./rag/ask");
-      
-      const timeoutPromise = new Promise<never>((_, reject) => 
+
+      // Pass conversation history if available
+      const config = conversationHistory ? { conversationHistory } : undefined;
+
+      const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error("La consulta tardó demasiado. Por favor intenta de nuevo.")), 60000)
       );
-      response = await Promise.race([askQuestion(question.trim()), timeoutPromise]);
+      response = await Promise.race([askQuestion(question.trim(), config), timeoutPromise]);
       
       // Calcular tiempo de respuesta
       responseTimeMs = Date.now() - startTime;

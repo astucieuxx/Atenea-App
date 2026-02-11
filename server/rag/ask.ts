@@ -29,12 +29,18 @@ import {
 // CONFIGURACIÓN
 // ============================================================================
 
+export interface ConversationMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
 export interface AskConfig {
   maxTesis: number; // Máximo de tesis a usar en la respuesta
   minRelevance: number; // Relevancia mínima para usar una tesis
   useLLM: boolean; // Si false, solo retorna tesis sin generar respuesta
   llmProvider?: "openai" | "anthropic"; // Proveedor de LLM
   llmModel?: string; // Modelo específico
+  conversationHistory?: ConversationMessage[]; // Historial de conversación
 }
 
 export const DEFAULT_ASK_CONFIG: AskConfig = {
@@ -70,6 +76,98 @@ export interface AskResponse {
 }
 
 // ============================================================================
+// DETECCIÓN DE FOLLOW-UPS vs PREGUNTAS NUEVAS
+// ============================================================================
+
+/**
+ * Determina si una pregunta necesita retrieval completo o es un follow-up
+ * que puede responderse con el historial de conversación existente.
+ */
+function needsRetrieval(question: string, conversationHistory?: ConversationMessage[]): boolean {
+  // Si no hay historial, siempre necesita retrieval (es la primera pregunta)
+  if (!conversationHistory || conversationHistory.length < 2) {
+    return true;
+  }
+
+  const q = question.toLowerCase().trim();
+  const wordCount = q.split(/\s+/).length;
+
+  // === SEÑALES DE FOLLOW-UP (NO necesita retrieval) ===
+
+  // 1. Empieza con palabras de continuación
+  const followUpStarters = [
+    "y ", "pero ", "entonces ", "explica", "detalla", "amplía", "profundiza",
+    "qué más", "también ", "además ", "a qué te refieres", "por qué",
+    "cómo así", "en qué sentido", "puedes ", "podrías ", "dame ",
+    "cuéntame más", "sigue", "continúa", "elabora",
+  ];
+  const startsWithFollowUp = followUpStarters.some(starter => q.startsWith(starter));
+
+  // 2. Contiene referencias pronominales al contexto previo
+  const pronounPatterns = [
+    /\b(eso|ese|esta|esto|estos|estas|esos|esas)\b/,
+    /\b(lo|la|los|las) (anterior|mencionado|dicho|explicado)\b/,
+    /\bde (eso|esto|lo anterior)\b/,
+    /\b(al respecto|sobre (eso|esto))\b/,
+    /\b(el mismo|la misma|los mismos|las mismas)\b/,
+  ];
+  const hasPronouns = pronounPatterns.some(p => p.test(q));
+
+  // 3. Preguntas cortas con interrogación (probable follow-up)
+  const isShortQuestion = wordCount < 8 && (q.includes("?") || q.includes("¿"));
+
+  // 4. Solicitudes de filtrado/formato sobre resultados previos
+  const filterPatterns = [
+    /^solo (precedentes|tesis|jurisprudencia)/,
+    /^muestra(me)? (solo|los|las)/,
+    /^filtra/,
+    /^ordena/,
+    /^resumen|^resume/,
+    /^en resumen/,
+    /^simplifica/,
+  ];
+  const isFilterRequest = filterPatterns.some(p => p.test(q));
+
+  // === SEÑALES DE PREGUNTA NUEVA (SÍ necesita retrieval) ===
+
+  // 1. Menciona artículos, leyes o códigos específicos
+  const legalRefPattern = /\b(artículo|art\.?)\s+\d+|código\s+(fiscal|civil|penal|comercio)|ley\s+(federal|general|de|del)/i;
+  const hasLegalRef = legalRefPattern.test(q);
+
+  // 2. Pregunta larga y sustantiva (> 15 palabras)
+  const isLongQuestion = wordCount > 15;
+
+  // 3. Contiene términos jurídicos específicos nuevos + longitud moderada
+  const legalTerms = [
+    "prescripción", "caducidad", "amparo", "jurisprudencia", "sentencia",
+    "recurso", "apelación", "casación", "nulidad", "inconstitucionalidad",
+    "competencia", "jurisdicción", "litispendencia", "cosa juzgada",
+    "defraudación", "homicidio", "robo", "fraude", "responsabilidad",
+    "indemnización", "reparación", "daño", "perjuicio",
+  ];
+  const hasLegalTerms = legalTerms.some(term => q.includes(term));
+  const isNewLegalQuery = hasLegalTerms && wordCount >= 8;
+
+  // === DECISIÓN ===
+
+  // Si tiene referencias legales específicas o es nueva consulta sustantiva → retrieval
+  if (hasLegalRef || isLongQuestion || isNewLegalQuery) {
+    console.log(`[🔍 RETRIEVAL] Pregunta nueva detectada: "${question.substring(0, 60)}..." (legalRef=${hasLegalRef}, long=${isLongQuestion}, newLegal=${isNewLegalQuery})`);
+    return true;
+  }
+
+  // Si tiene señales de follow-up → no retrieval
+  if (startsWithFollowUp || hasPronouns || isShortQuestion || isFilterRequest) {
+    console.log(`[💬 FOLLOW-UP] Follow-up detectado: "${question.substring(0, 60)}..." (starter=${startsWithFollowUp}, pronouns=${hasPronouns}, short=${isShortQuestion}, filter=${isFilterRequest})`);
+    return false;
+  }
+
+  // Por defecto, hacer retrieval (es más seguro)
+  console.log(`[🔍 RETRIEVAL] Default: ejecutando retrieval para "${question.substring(0, 60)}..."`);
+  return true;
+}
+
+// ============================================================================
 // GENERACIÓN DE RESPUESTA CON LLM
 // ============================================================================
 
@@ -77,6 +175,8 @@ async function generateAnswerWithLLM(
   question: string,
   retrievedTesis: RetrievedTesis[],
   retrievedPrecedentes: RetrievedPrecedente[] = [],
+  conversationHistory?: ConversationMessage[],
+  hasRetrievalContext: boolean = true,
 ): Promise<{ answer: string; tokenUsage: { promptTokens: number; completionTokens: number; totalTokens: number } }> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -231,7 +331,11 @@ Estoy especializada en jurisprudencia y criterios legales mexicanos. Si tienes p
 
 **Recuerda:** Tu objetivo es ser útil, precisa y conversacional. Ayuda al usuario a navegar la jurisprudencia mexicana de manera clara y práctica.`;
 
-  const userPrompt = `Pregunta: ${question}
+  // Build user prompt conditionally based on whether we have retrieval context
+  let userPrompt: string;
+
+  if (hasRetrievalContext) {
+    userPrompt = `Pregunta: ${question}
 
 Tesis relevantes:
 ${tesisContext}
@@ -255,7 +359,7 @@ INSTRUCCIONES:
    - NUNCA digas "no encontré" o "no hay información"
 
 3. **Estructura tu respuesta:**
-   
+
    **Si es pregunta binaria:**
    - Línea 1: Respuesta directa (Sí/No/Depende + breve razón)
    - Desarrollo: Puntos estructurados con contexto jurídico
@@ -285,6 +389,22 @@ INSTRUCCIONES:
    - Números (1., 2., 3.) para puntos principales
    - Guiones (-) para subpuntos
    - Sin emojis ni símbolos decorativos`;
+  } else {
+    // Follow-up: no retrieval context, rely on conversation history
+    userPrompt = `Pregunta: ${question}
+
+Esta es una pregunta de seguimiento basada en la conversación anterior.
+
+INSTRUCCIONES:
+1. Responde basándote en la información ya proporcionada en mensajes anteriores de la conversación.
+2. Usa las tesis y precedentes que ya fueron citados previamente como referencia.
+3. Mantén las mismas referencias [1], [2], [3] de la respuesta anterior si aplica.
+4. Si la pregunta requiere información completamente nueva que no fue discutida, indícalo al usuario.
+5. Mantén tono profesional y directo, sin muletillas.
+6. USA **negritas** para conceptos jurídicos clave.
+7. TERMINA con pregunta de seguimiento conversacional.
+8. Sin emojis ni símbolos decorativos.`;
+  }
 
   try {
     // Limpiar la API key (eliminar espacios al inicio/final)
@@ -312,10 +432,17 @@ INSTRUCCIONES:
           model: "gpt-4o-mini",
           messages: [
             { role: "system", content: systemPrompt },
+            // Include conversation history (excluding the current message) for context
+            ...(conversationHistory && conversationHistory.length > 1
+              ? conversationHistory.slice(0, -1).map(msg => ({
+                  role: msg.role as "user" | "assistant",
+                  content: msg.content,
+                }))
+              : []),
             { role: "user", content: userPrompt },
           ],
-          temperature: 0.1, // Muy bajo para respuestas más deterministas y profesionales, siguiendo estrictamente las reglas
-          max_tokens: 1200, // Optimizado para respuestas más rápidas sin sacrificar calidad
+          temperature: 0.1,
+          max_tokens: 1200,
         }),
         signal: controller.signal,
       });
@@ -467,17 +594,49 @@ INSTRUCCIONES:
 
 export async function askQuestion(
   question: string,
-  config: AskConfig = DEFAULT_ASK_CONFIG
+  config: Partial<AskConfig> & { conversationHistory?: ConversationMessage[] } = {}
 ): Promise<AskResponse> {
+  // Merge with defaults
+  const fullConfig: AskConfig = { ...DEFAULT_ASK_CONFIG, ...config };
+  const { conversationHistory } = config;
+
   if (!question || question.trim().length < 10) {
     throw new Error("La pregunta debe tener al menos 10 caracteres");
   }
 
+  // PASO 0: Detectar si es follow-up o pregunta nueva
+  const shouldRetrieve = needsRetrieval(question, conversationHistory);
+
+  if (!shouldRetrieve) {
+    // CAMINO A: Follow-up sin retrieval - respuesta rápida usando historial
+    try {
+      const llmResult = await generateAnswerWithLLM(
+        question,
+        [], // No tesis
+        [], // No precedentes
+        conversationHistory,
+        false, // hasRetrievalContext = false
+      );
+      console.log(`[💬 FOLLOW-UP] Respuesta generada sin retrieval`);
+      return {
+        answer: llmResult.answer,
+        tesisUsed: [], // No hay nuevas tesis (el frontend muestra las de la respuesta anterior)
+        hasEvidence: true, // Basado en historial
+        confidence: "medium",
+        tokenUsage: llmResult.tokenUsage,
+      };
+    } catch (error) {
+      console.error("[FOLLOW-UP] Error en follow-up, fallback a retrieval completo:", error);
+      // Si falla, caer al camino B (retrieval completo)
+    }
+  }
+
+  // CAMINO B: Pregunta nueva con retrieval completo
   // Paso 1: Recuperar tesis y precedentes relevantes
   const { tesis: retrievedTesis, precedentes: retrievedPrecedentes } = await retrieveRelevantDocuments(question, {
-    maxResults: config.maxTesis * 2, // Recuperar más para filtrar
-    finalLimit: config.maxTesis,
-    minSimilarity: config.minRelevance,
+    maxResults: fullConfig.maxTesis * 2,
+    finalLimit: fullConfig.maxTesis,
+    minSimilarity: fullConfig.minRelevance,
     vectorWeight: 0.7,
     textWeight: 0.3,
     deduplicateByTesis: true,
@@ -508,9 +667,9 @@ export async function askQuestion(
   let answer: string;
   let tokenUsage: { promptTokens: number; completionTokens: number; totalTokens: number } | undefined;
   
-  if (config.useLLM) {
+  if (fullConfig.useLLM) {
     try {
-      const llmResult = await generateAnswerWithLLM(question, tesisToUse, precedentesToUse);
+      const llmResult = await generateAnswerWithLLM(question, tesisToUse, precedentesToUse, conversationHistory, true);
       answer = llmResult.answer;
       tokenUsage = llmResult.tokenUsage;
       console.log("[askQuestion] Token usage received:", tokenUsage);

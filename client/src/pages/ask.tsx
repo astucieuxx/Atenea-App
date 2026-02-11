@@ -655,7 +655,7 @@ export default function Ask() {
   };
 
   const mutation = useMutation({
-    mutationFn: async (data: { question: string }) => {
+    mutationFn: async (data: { question: string; conversationHistory?: Array<{ role: string; content: string }> }) => {
       const start = Date.now();
       setStartTime(start);
       setElapsedSeconds(0);
@@ -862,7 +862,14 @@ export default function Ask() {
     setQuestion("");
     
     // Hacer la petición
-    mutation.mutate({ question: userMessage.content });
+    // Build conversation history for server context (last 10 messages max)
+    const recentMessages = [...messages, userMessage].slice(-10);
+    const conversationHistory = recentMessages.map(m => ({
+      role: m.role,
+      content: m.content,
+    }));
+
+    mutation.mutate({ question: userMessage.content, conversationHistory });
   };
   
   // Scroll automático al último mensaje
