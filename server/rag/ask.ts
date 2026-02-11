@@ -84,37 +84,72 @@ export interface AskResponse {
  * que puede responderse con el historial de conversación existente.
  */
 function needsRetrieval(question: string, conversationHistory?: ConversationMessage[]): boolean {
-  // Si no hay historial, siempre necesita retrieval (es la primera pregunta)
-  if (!conversationHistory || conversationHistory.length < 2) {
+  // Must have a real conversation: at least one prior assistant response
+  // This prevents treating the first message as follow-up even when localStorage loads old messages
+  const hasRealConversation = conversationHistory
+    && conversationHistory.length >= 2
+    && conversationHistory.some(m => m.role === "assistant");
+
+  if (!hasRealConversation) {
+    console.log(`[🔍 RETRIEVAL] No hay conversación previa con respuesta de Atenea, ejecutando retrieval`);
     return true;
   }
 
   const q = question.toLowerCase().trim();
   const wordCount = q.split(/\s+/).length;
 
-  // === SEÑALES DE FOLLOW-UP (NO necesita retrieval) ===
+  // === SEÑALES DE PREGUNTA NUEVA (SÍ necesita retrieval) - EVALUAR PRIMERO ===
+
+  // 1. Menciona artículos, leyes o códigos específicos
+  const legalRefPattern = /\b(artículo|art\.?)\s+\d+|código\s+(fiscal|civil|penal|comercio)|ley\s+(federal|general|de|del)/i;
+  const hasLegalRef = legalRefPattern.test(q);
+
+  // 2. Pregunta larga y sustantiva (> 15 palabras)
+  const isLongQuestion = wordCount > 15;
+
+  // 3. Contiene términos jurídicos específicos (any length - even short queries)
+  const legalTerms = [
+    "prescripción", "caducidad", "amparo", "jurisprudencia", "sentencia",
+    "recurso", "apelación", "casación", "nulidad", "inconstitucionalidad",
+    "competencia", "jurisdicción", "litispendencia", "cosa juzgada",
+    "defraudación", "homicidio", "robo", "fraude", "responsabilidad",
+    "indemnización", "reparación", "daño", "perjuicio",
+  ];
+  const hasLegalTerms = legalTerms.some(term => q.includes(term));
+
+  // Legal terms with 5+ words = new query (lowered from 8)
+  const isNewLegalQuery = hasLegalTerms && wordCount >= 5;
+
+  // If it has strong signals of being a new question → always retrieval
+  if (hasLegalRef || isLongQuestion || isNewLegalQuery) {
+    console.log(`[🔍 RETRIEVAL] Pregunta nueva detectada: "${question.substring(0, 60)}..." (legalRef=${hasLegalRef}, long=${isLongQuestion}, newLegal=${isNewLegalQuery})`);
+    return true;
+  }
+
+  // === SEÑALES DE FOLLOW-UP (NO necesita retrieval) - EVALUAR DESPUÉS ===
 
   // 1. Empieza con palabras de continuación
   const followUpStarters = [
     "y ", "pero ", "entonces ", "explica", "detalla", "amplía", "profundiza",
-    "qué más", "también ", "además ", "a qué te refieres", "por qué",
-    "cómo así", "en qué sentido", "puedes ", "podrías ", "dame ",
+    "qué más", "también ", "además ", "a qué te refieres",
+    "cómo así", "en qué sentido", "dame ",
     "cuéntame más", "sigue", "continúa", "elabora",
   ];
   const startsWithFollowUp = followUpStarters.some(starter => q.startsWith(starter));
 
-  // 2. Contiene referencias pronominales al contexto previo
+  // 2. Contiene referencias pronominales (strict: only standalone pronoun usage, not adjectives)
   const pronounPatterns = [
-    /\b(eso|ese|esta|esto|estos|estas|esos|esas)\b/,
-    /\b(lo|la|los|las) (anterior|mencionado|dicho|explicado)\b/,
+    /\bsobre (eso|esto)\b/,
     /\bde (eso|esto|lo anterior)\b/,
-    /\b(al respecto|sobre (eso|esto))\b/,
-    /\b(el mismo|la misma|los mismos|las mismas)\b/,
+    /\b(lo|la|los|las) (anterior|mencionado|dicho|explicado)\b/,
+    /\b(al respecto)\b/,
+    /\b(el mismo|la misma|los mismos|las mismas) (tema|punto|criterio|asunto)\b/,
+    /\b¿(y|qué hay de) (eso|esto)\?/,
   ];
   const hasPronouns = pronounPatterns.some(p => p.test(q));
 
-  // 3. Preguntas cortas con interrogación (probable follow-up)
-  const isShortQuestion = wordCount < 8 && (q.includes("?") || q.includes("¿"));
+  // 3. Very short questions with interrogation (< 6 words, more restrictive)
+  const isShortQuestion = wordCount < 6 && (q.includes("?") || q.includes("¿"));
 
   // 4. Solicitudes de filtrado/formato sobre resultados previos
   const filterPatterns = [
@@ -128,35 +163,7 @@ function needsRetrieval(question: string, conversationHistory?: ConversationMess
   ];
   const isFilterRequest = filterPatterns.some(p => p.test(q));
 
-  // === SEÑALES DE PREGUNTA NUEVA (SÍ necesita retrieval) ===
-
-  // 1. Menciona artículos, leyes o códigos específicos
-  const legalRefPattern = /\b(artículo|art\.?)\s+\d+|código\s+(fiscal|civil|penal|comercio)|ley\s+(federal|general|de|del)/i;
-  const hasLegalRef = legalRefPattern.test(q);
-
-  // 2. Pregunta larga y sustantiva (> 15 palabras)
-  const isLongQuestion = wordCount > 15;
-
-  // 3. Contiene términos jurídicos específicos nuevos + longitud moderada
-  const legalTerms = [
-    "prescripción", "caducidad", "amparo", "jurisprudencia", "sentencia",
-    "recurso", "apelación", "casación", "nulidad", "inconstitucionalidad",
-    "competencia", "jurisdicción", "litispendencia", "cosa juzgada",
-    "defraudación", "homicidio", "robo", "fraude", "responsabilidad",
-    "indemnización", "reparación", "daño", "perjuicio",
-  ];
-  const hasLegalTerms = legalTerms.some(term => q.includes(term));
-  const isNewLegalQuery = hasLegalTerms && wordCount >= 8;
-
-  // === DECISIÓN ===
-
-  // Si tiene referencias legales específicas o es nueva consulta sustantiva → retrieval
-  if (hasLegalRef || isLongQuestion || isNewLegalQuery) {
-    console.log(`[🔍 RETRIEVAL] Pregunta nueva detectada: "${question.substring(0, 60)}..." (legalRef=${hasLegalRef}, long=${isLongQuestion}, newLegal=${isNewLegalQuery})`);
-    return true;
-  }
-
-  // Si tiene señales de follow-up → no retrieval
+  // If it has follow-up signals → skip retrieval
   if (startsWithFollowUp || hasPronouns || isShortQuestion || isFilterRequest) {
     console.log(`[💬 FOLLOW-UP] Follow-up detectado: "${question.substring(0, 60)}..." (starter=${startsWithFollowUp}, pronouns=${hasPronouns}, short=${isShortQuestion}, filter=${isFilterRequest})`);
     return false;
