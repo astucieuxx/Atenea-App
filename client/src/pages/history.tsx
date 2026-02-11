@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
+import { useState, useEffect } from "react";
 import { 
   Scale, 
   FileText, 
@@ -15,10 +16,37 @@ import { Badge } from "@/components/ui/badge";
 import { HistoryLoadingSkeleton } from "@/components/loading-skeleton";
 import type { CaseHistoryEntry } from "@shared/schema";
 
+// Interfaz para búsquedas guardadas desde localStorage
+interface SavedSearch {
+  id: string;
+  question: string;
+  answer: string;
+  messages: any[];
+  tesisUsed: any[];
+  timestamp: number;
+}
+
 export default function HistoryPage() {
   const { data: history, isLoading } = useQuery<CaseHistoryEntry[]>({
     queryKey: ["/api/history"],
   });
+  
+  // Leer búsquedas guardadas desde localStorage
+  const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
+  
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("atenea_saved_searches");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          setSavedSearches(Array.isArray(parsed) ? parsed : []);
+        }
+      } catch (error) {
+        console.error("Error reading saved searches:", error);
+      }
+    }
+  }, []);
 
   if (isLoading) {
     return (
@@ -41,7 +69,31 @@ export default function HistoryPage() {
     );
   }
 
-  const cases = history || [];
+  // Combinar historial del servidor con búsquedas guardadas
+  const serverCases = history || [];
+  
+  // Convertir búsquedas guardadas al formato esperado
+  const savedSearchCases: CaseHistoryEntry[] = savedSearches.map((search) => ({
+    id: search.id,
+    titulo: search.question.slice(0, 80),
+    problema_juridico: search.question,
+    descripcion: search.answer.slice(0, 200),
+    created_at: new Date(search.timestamp).toISOString(),
+    tesis_usadas: search.tesisUsed.map(t => t.id),
+    argumentos_generados: [],
+    rol_procesal: undefined,
+    riesgo: undefined,
+    recomendaciones: [],
+  }));
+  
+  // Combinar y ordenar por fecha (más recientes primero)
+  const allCases = [...serverCases, ...savedSearchCases].sort((a, b) => {
+    const dateA = new Date(a.created_at).getTime();
+    const dateB = new Date(b.created_at).getTime();
+    return dateB - dateA;
+  });
+  
+  const cases = allCases;
 
   return (
     <div className="min-h-screen bg-background">
