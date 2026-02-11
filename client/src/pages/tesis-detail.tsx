@@ -12,6 +12,7 @@ import {
   Copy,
   Check,
   ExternalLink,
+  Hash,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -333,6 +334,16 @@ export default function TesisDetail() {
                       <div>
                         <p className="text-xs text-muted-foreground uppercase tracking-wide">{t('tesis.year')}</p>
                         <p className="text-foreground">{tesis.localizacion_anio}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {tesis.id && (
+                    <div className="flex items-start gap-3">
+                      <Hash className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Registro Digital</p>
+                        <p className="text-foreground font-mono">{tesis.id}</p>
                       </div>
                     </div>
                   )}
