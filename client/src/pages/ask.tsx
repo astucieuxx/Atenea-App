@@ -900,9 +900,11 @@ export default function Ask() {
                       value={question}
                       onChange={(e) => setQuestion(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                        if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault();
-                          handleSearch();
+                          if (question.trim().length >= 10 && !mutation.isPending) {
+                            handleSearch();
+                          }
                         }
                       }}
                       placeholder={t('search.questionPlaceholder')}
