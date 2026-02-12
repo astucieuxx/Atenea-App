@@ -479,8 +479,8 @@ function TesisUsedCard({
         <div className="space-y-2">
           {/* Header con número, tipo y relevancia */}
           <div className="flex flex-wrap items-center gap-1.5">
-            <Badge variant="outline" className="text-xs font-serif font-semibold px-2 py-0.5">
-              #{index + 1}
+            <Badge variant="outline" className="text-xs font-serif font-bold px-2 py-0.5">
+              <strong>{index + 1}</strong>
             </Badge>
             <Badge variant={isPrecedente ? "default" : "secondary"} className="text-xs font-serif px-2 py-0.5">
               {isPrecedente ? t('search.sourcePrecedente') : t('search.sourceTesis')}
@@ -666,6 +666,10 @@ export default function Ask() {
   // Estado para mantener los criterios visibles incluso cuando se agregan mensajes de explicación
   const [savedSources, setSavedSources] = useState<Array<{ id: string; title: string; citation: string; relevanceScore: number; source?: "tesis" | "precedente"; ius?: number }>>([]);
   
+  // Estado para cargar más criterios
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMoreResults, setHasMoreResults] = useState(false);
+  
   const { toast } = useToast();
   const { t } = useLanguage();
   
@@ -720,6 +724,49 @@ export default function Ask() {
   };
   
   const questionForCurrentSources = getQuestionForCurrentSources();
+  
+  // Función para cargar más criterios
+  const handleLoadMore = async () => {
+    if (!questionForCurrentSources || questionForCurrentSources.trim().length < 10) {
+      toast({
+        title: "No hay consulta disponible",
+        description: "Necesitas hacer una consulta primero",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoadingMore(true);
+    try {
+      const offset = savedSources.length;
+      const response = await apiRequest("POST", "/api/ask/more", {
+        question: questionForCurrentSources,
+        offset,
+        limit: 10,
+      });
+
+      if (response.tesisUsed && response.tesisUsed.length > 0) {
+        // Agregar nuevos criterios a la lista existente
+        setSavedSources(prev => [...prev, ...response.tesisUsed]);
+        setHasMoreResults(response.hasMore || false);
+      } else {
+        setHasMoreResults(false);
+        toast({
+          title: "No hay más criterios",
+          description: "Se han mostrado todos los criterios relevantes",
+          variant: "default",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error al cargar más criterios",
+        description: error?.message || "No se pudieron cargar más criterios",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingMore(false);
+    }
+  };
   
   // Función para manejar clicks en referencias [1], [2], etc.
   const handleReferenceClick = (index: number) => {
@@ -847,6 +894,12 @@ export default function Ask() {
       // Actualizar los criterios guardados cuando hay una nueva respuesta con criterios
       if (data.tesisUsed && data.tesisUsed.length > 0) {
         setSavedSources(data.tesisUsed);
+        // Asumir que hay más resultados si retornamos el máximo esperado (5 por defecto)
+        // O si hay más de 5, probablemente hay más disponibles
+        setHasMoreResults(data.tesisUsed.length >= 5);
+      } else {
+        setSavedSources([]);
+        setHasMoreResults(false);
       }
       
       // Guardar en localStorage
@@ -949,6 +1002,7 @@ export default function Ask() {
       setMessages([]);
       setQuestion("");
       setSavedSources([]); // Limpiar también los criterios guardados
+      setHasMoreResults(false); // Resetear estado de más resultados
       
       // Limpiar localStorage
       if (typeof window !== "undefined") {
@@ -1308,6 +1362,28 @@ export default function Ask() {
                         onExplainRelevance={handleExplainRelevance}
                       />
                     ))}
+                    {/* Botón para cargar más criterios */}
+                    {hasMoreResults && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full gap-2 font-serif text-xs h-8 border-dashed"
+                        onClick={handleLoadMore}
+                        disabled={loadingMore}
+                      >
+                        {loadingMore ? (
+                          <>
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Cargando...
+                          </>
+                        ) : (
+                          <>
+                            <ChevronRight className="h-3 w-3" />
+                            Ver más criterios relevantes
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </div>
                   {/* Spacer para que el scrollbar no llegue hasta la barra de búsqueda */}
                   {messages.length > 0 && (
@@ -1370,6 +1446,28 @@ export default function Ask() {
                           onExplainRelevance={handleExplainRelevance}
                         />
                       ))}
+                      {/* Botón para cargar más criterios */}
+                      {hasMoreResults && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full gap-2 font-serif text-xs h-8 border-dashed"
+                          onClick={handleLoadMore}
+                          disabled={loadingMore}
+                        >
+                          {loadingMore ? (
+                            <>
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              Cargando...
+                            </>
+                          ) : (
+                            <>
+                              <ChevronRight className="h-3 w-3" />
+                              Ver más criterios relevantes
+                            </>
+                          )}
+                        </Button>
+                      )}
                     </div>
                     {/* Spacer para que el scrollbar no llegue hasta la barra de búsqueda */}
                     {messages.length > 0 && (

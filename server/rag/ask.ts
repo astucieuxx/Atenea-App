@@ -577,7 +577,7 @@ export async function askQuestion(
       source: "precedente" as const,
       url: rp.precedente.url_origen || undefined,
     })),
-  ];
+  ].sort((a, b) => b.relevanceScore - a.relevanceScore); // Ordenar por relevancia descendente
 
   // Asegurar que tokenUsage siempre esté presente (incluso si es undefined, lo convertimos a un objeto con 0s)
   const finalTokenUsage = tokenUsage || {

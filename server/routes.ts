@@ -311,6 +311,84 @@ export async function registerRoutes(
     }
   });
 
+  // RAG ENDPOINT: /api/ask/more - Obtener más criterios relevantes
+  // ============================================================================
+  app.post("/api/ask/more", async (req, res) => {
+    try {
+      const { question, offset = 0, limit = 10 } = req.body;
+      
+      if (!question || typeof question !== "string" || question.trim().length < 10) {
+        return res.status(400).json({ 
+          error: "La pregunta debe ser una cadena de texto con al menos 10 caracteres." 
+        });
+      }
+
+      const offsetNum = typeof offset === "number" ? offset : parseInt(offset, 10) || 0;
+      const limitNum = typeof limit === "number" ? limit : parseInt(limit, 10) || 10;
+
+      if (offsetNum < 0 || limitNum < 1 || limitNum > 20) {
+        return res.status(400).json({ 
+          error: "offset debe ser >= 0 y limit debe estar entre 1 y 20" 
+        });
+      }
+
+      const { retrieveRelevantDocuments } = await import("./rag/retrieval");
+      const { formatTesisCitation, formatPrecedenteCitation, formatTesisFormalCitation, formatPrecedenteFormalCitation } = await import("./rag/retrieval");
+      
+      // Recuperar más resultados con paginación
+      // Recuperar suficientes resultados para poder paginar (más que offset + limit)
+      const result = await retrieveRelevantDocuments(question.trim(), {
+        maxResults: Math.max(100, (offsetNum + limitNum) * 3), // Recuperar suficientes para cubrir offset + limit
+        finalLimit: offsetNum + limitNum + 10, // Un poco más para asegurar que hay resultados después del offset
+        minSimilarity: 0.2,
+        vectorWeight: 0.7,
+        textWeight: 0.3,
+        deduplicateByTesis: true,
+        includePrecedentes: true,
+        useFlexibleLimits: true,
+        maxTesis: offsetNum + limitNum + 10,
+        maxJurisprudence: offsetNum + limitNum + 10,
+        maxTotalResults: offsetNum + limitNum + 10,
+        offset: offsetNum,
+        limit: limitNum,
+      });
+
+      // Formatear resultados para el frontend y ordenar por relevancia
+      const tesisUsed = [
+        ...result.tesis.map(rt => ({
+          id: rt.tesis.id,
+          title: rt.tesis.title,
+          citation: formatTesisCitation(rt.tesis),
+          formalCitation: formatTesisFormalCitation(rt.tesis),
+          relevanceScore: rt.relevanceScore,
+          source: "tesis" as const,
+          url: rt.tesis.url || undefined,
+        })),
+        ...result.precedentes.map(rp => ({
+          id: rp.precedente.id,
+          title: rp.precedente.rubro,
+          citation: formatPrecedenteCitation(rp.precedente),
+          formalCitation: formatPrecedenteFormalCitation(rp.precedente),
+          relevanceScore: rp.relevanceScore,
+          source: "precedente" as const,
+          url: rp.precedente.url_origen || undefined,
+          ius: rp.precedente.ius,
+        })),
+      ].sort((a, b) => b.relevanceScore - a.relevanceScore); // Ordenar por relevancia descendente
+
+      return res.json({
+        tesisUsed,
+        hasMore: tesisUsed.length === limitNum, // Si retornamos el límite completo, probablemente hay más
+      });
+    } catch (error) {
+      console.error("[API /ask/more] Error:", error);
+      return res.status(500).json({ 
+        error: "Error al obtener más criterios",
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   // RAG ENDPOINT: /api/ask
   // ============================================================================
   app.post("/api/ask", async (req, res) => {
