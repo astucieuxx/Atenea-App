@@ -121,6 +121,41 @@ export async function registerRoutes(
     }
   });
 
+  // Endpoint temporal para verificar si una tesis existe en la BD
+  app.get("/api/check-tesis/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { getTesisById } = await import("./rag/database");
+      const tesis = await getTesisById(id);
+
+      if (!tesis) {
+        return res.json({ 
+          exists: false, 
+          id,
+          message: `Tesis con ID ${id} NO encontrada en la base de datos` 
+        });
+      }
+
+      return res.json({ 
+        exists: true,
+        id: tesis.id,
+        title: tesis.title,
+        tipo: tesis.tipo,
+        epoca: tesis.epoca,
+        materias: tesis.materias,
+        url: tesis.url,
+        message: `Tesis con ID ${id} encontrada en la base de datos`
+      });
+    } catch (error) {
+      console.error("Error checking tesis:", error);
+      return res.status(500).json({ 
+        exists: false,
+        error: "Error al verificar la tesis",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   app.post("/api/arguments", async (req, res) => {
     try {
       const parsed = argumentRequestSchema.safeParse(req.body);
@@ -229,6 +264,53 @@ export async function registerRoutes(
     return res.json(config);
   });
 
+  // RAG ENDPOINT: /api/explain-relevance
+  // ============================================================================
+  app.post("/api/explain-relevance", async (req, res) => {
+    try {
+      const { question, documentId, source, documentIndex } = req.body;
+      
+      if (!question || typeof question !== "string" || question.trim().length < 10) {
+        return res.status(400).json({ 
+          error: "La pregunta debe ser una cadena de texto con al menos 10 caracteres." 
+        });
+      }
+
+      if (!documentId || typeof documentId !== "string") {
+        return res.status(400).json({ 
+          error: "documentId es requerido y debe ser una cadena de texto." 
+        });
+      }
+
+      if (!source || (source !== "tesis" && source !== "precedente")) {
+        return res.status(400).json({ 
+          error: "source debe ser 'tesis' o 'precedente'." 
+        });
+      }
+
+      const index = typeof documentIndex === "number" ? documentIndex : 0;
+
+      const { explainRelevance } = await import("./rag/explain-relevance");
+      
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error("La consulta tardó demasiado. Por favor intenta de nuevo.")), 30000)
+      );
+      
+      const explanation = await Promise.race([
+        explainRelevance(question.trim(), documentId, source, index),
+        timeoutPromise
+      ]);
+
+      return res.json(explanation);
+    } catch (error) {
+      console.error("[API /explain-relevance] Error:", error);
+      return res.status(500).json({ 
+        error: "Error al generar la explicación de relevancia",
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   // RAG ENDPOINT: /api/ask
   // ============================================================================
   app.post("/api/ask", async (req, res) => {
@@ -237,7 +319,7 @@ export async function registerRoutes(
     let response: any = null;
     
     try {
-      const { question } = req.body;
+      const { question, conversationHistory } = req.body;
       
       if (!question || typeof question !== "string" || question.trim().length < 10) {
         return res.status(400).json({ 
@@ -245,12 +327,39 @@ export async function registerRoutes(
         });
       }
 
-      const { askQuestion } = await import("./rag/ask");
+      // Validar historial de conversación si se proporciona
+      let validHistory: Array<{ role: "user" | "assistant"; content: string }> | undefined;
+      if (conversationHistory && Array.isArray(conversationHistory)) {
+        validHistory = conversationHistory
+          .filter((msg: any) => 
+            msg && 
+            typeof msg === 'object' && 
+            (msg.role === 'user' || msg.role === 'assistant') &&
+            typeof msg.content === 'string' &&
+            msg.content.trim().length > 0
+          )
+          .slice(-10) // Limitar a últimos 10 mensajes para no exceder tokens
+          .map((msg: any) => ({
+            role: msg.role as "user" | "assistant",
+            content: msg.content.trim()
+          }));
+      }
+
+      const { askQuestion, DEFAULT_ASK_CONFIG } = await import("./rag/ask");
+      
+      // Usar DEFAULT_ASK_CONFIG como base y solo sobrescribir conversationHistory
+      const askConfig = {
+        ...DEFAULT_ASK_CONFIG,
+        conversationHistory: validHistory,
+      };
       
       const timeoutPromise = new Promise<never>((_, reject) => 
         setTimeout(() => reject(new Error("La consulta tardó demasiado. Por favor intenta de nuevo.")), 60000)
       );
-      response = await Promise.race([askQuestion(question.trim()), timeoutPromise]);
+      response = await Promise.race([
+        askQuestion(question.trim(), askConfig), 
+        timeoutPromise
+      ]);
       
       // Calcular tiempo de respuesta
       responseTimeMs = Date.now() - startTime;

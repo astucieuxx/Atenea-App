@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { ArrowRight, Loader2, FileText, Sparkles, AlertTriangle, BookOpen, Search, Copy, Check, Save, Trash2, X, ChevronRight, Bookmark, BookmarkCheck } from "lucide-react";
+import { ArrowRight, Loader2, FileText, Sparkles, AlertTriangle, BookOpen, Search, Copy, Check, Save, Trash2, X, ChevronRight, Bookmark, BookmarkCheck, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -440,12 +440,14 @@ function TesisUsedCard({
   item, 
   index, 
   t,
-  isHighlighted = false
+  isHighlighted = false,
+  onExplainRelevance
 }: { 
-  item: { id: string; title: string; citation: string; relevanceScore: number; source?: "tesis" | "precedente" }; 
+  item: { id: string; title: string; citation: string; relevanceScore: number; source?: "tesis" | "precedente"; ius?: number }; 
   index: number; 
   t: (key: string) => string;
   isHighlighted?: boolean;
+  onExplainRelevance?: (documentId: string, source: "tesis" | "precedente", documentIndex: number) => void;
 }) {
   const [showFullTitle, setShowFullTitle] = useState(false);
   const [isSaved, setIsSaved] = useState(() => isDocumentSaved(item.id, item.source || "tesis"));
@@ -493,37 +495,60 @@ function TesisUsedCard({
             <h4 className="font-bold text-sm text-foreground font-serif break-words leading-snug">
               {displayTitle}
             </h4>
-            {shouldTruncate && (
-              <button
-                onClick={() => setShowFullTitle(!showFullTitle)}
-                className="text-xs text-primary hover:underline font-serif mt-0.5"
-              >
-                {showFullTitle ? 'Menos' : 'Más'}
-              </button>
-            )}
+            <div className="flex items-center gap-2 mt-0.5">
+              {shouldTruncate && (
+                <button
+                  onClick={() => setShowFullTitle(!showFullTitle)}
+                  className="text-xs text-primary hover:underline font-serif"
+                >
+                  {showFullTitle ? 'Ver Menos' : 'Ver Más'}
+                </button>
+              )}
+              <span className="text-xs text-muted-foreground font-mono">
+                {isPrecedente && item.ius && item.ius > 0 ? `IUS: ${item.ius}` : `ID: ${item.id}`}
+              </span>
+            </div>
           </div>
           
-          {/* Botones de acción */}
-          <div className="pt-1.5 border-t border-border flex gap-2">
+          {/* Botones de acción - Todos en una fila */}
+          <div className="pt-1.5 border-t border-border flex gap-1.5">
+            {/* 1. Ver relevancia (primero) */}
+            {onExplainRelevance && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1 font-serif text-xs h-6 px-2 border-primary/20 hover:border-primary/40 hover:bg-primary/5 shrink-0"
+                onClick={() => {
+                  const source = (item.source || "tesis") as "tesis" | "precedente";
+                  onExplainRelevance(item.id, source, index);
+                }}
+              >
+                <HelpCircle className="h-3 w-3" />
+                <span className="hidden sm:inline">Ver relevancia</span>
+                <span className="sm:hidden">Relevancia</span>
+              </Button>
+            )}
+            {/* 2. Ver tesis completa / Ver precedente (segundo) */}
             {isPrecedente ? (
-              <Link href={`/precedente/${item.id}`} className="flex-1">
-                <Button variant="outline" size="sm" className="gap-1.5 font-serif text-xs h-7 px-3 w-full">
-                  <FileText className="h-3.5 w-3.5" />
-                  {t('search.viewPrecedente')}
+              <Link href={`/precedente/${item.id}`} className="flex-1 min-w-0">
+                <Button variant="outline" size="sm" className="gap-1 font-serif text-xs h-6 px-2 w-full">
+                  <FileText className="h-3 w-3" />
+                  <span className="truncate">{t('search.viewPrecedente')}</span>
                 </Button>
               </Link>
             ) : (
-              <Link href={`/tesis/${item.id}`} className="flex-1">
-                <Button variant="outline" size="sm" className="gap-1.5 font-serif text-xs h-7 px-3 w-full">
-                  <FileText className="h-3.5 w-3.5" />
-                  {t('search.viewFull')}
+              <Link href={`/tesis/${item.id}`} className="flex-1 min-w-0">
+                <Button variant="outline" size="sm" className="gap-1 font-serif text-xs h-6 px-2 w-full">
+                  <FileText className="h-3 w-3" />
+                  <span className="truncate">{t('search.viewFull')}</span>
                 </Button>
               </Link>
             )}
+            {/* 3. Guardar (tercero) */}
             <Button
               variant={isSaved ? "default" : "outline"}
               size="sm"
-              className="gap-1.5 font-serif text-xs h-7 px-3"
+              className="gap-1 font-serif text-xs h-6 px-2 shrink-0"
               onClick={() => {
                 const source = item.source || "tesis";
                 if (isSaved) {
@@ -559,13 +584,13 @@ function TesisUsedCard({
             >
               {isSaved ? (
                 <>
-                  <BookmarkCheck className="h-3.5 w-3.5" />
-                  Guardado
+                  <BookmarkCheck className="h-3 w-3" />
+                  <span className="hidden sm:inline">Guardado</span>
                 </>
               ) : (
                 <>
-                  <Bookmark className="h-3.5 w-3.5" />
-                  Guardar
+                  <Bookmark className="h-3 w-3" />
+                  <span className="hidden sm:inline">Guardar</span>
                 </>
               )}
             </Button>
@@ -638,12 +663,63 @@ export default function Ask() {
   // Estado para resaltar una ficha cuando se hace click en una referencia
   const [highlightedSourceIndex, setHighlightedSourceIndex] = useState<number | null>(null);
   
+  // Estado para mantener los criterios visibles incluso cuando se agregan mensajes de explicación
+  const [savedSources, setSavedSources] = useState<Array<{ id: string; title: string; citation: string; relevanceScore: number; source?: "tesis" | "precedente"; ius?: number }>>([]);
+  
   const { toast } = useToast();
   const { t } = useLanguage();
   
-  // Obtener fuentes de la última respuesta de Atenea
-  const lastAssistantMessage = messages.filter(m => m.role === 'assistant').pop();
-  const currentSources = lastAssistantMessage?.response?.tesisUsed || [];
+  // Obtener fuentes: usar savedSources si existen, sino buscar en el último mensaje con respuesta
+  const lastAssistantMessageWithResponse = messages.filter(m => m.role === 'assistant' && m.response?.tesisUsed).pop();
+  const currentSources = savedSources.length > 0 
+    ? savedSources 
+    : (lastAssistantMessageWithResponse?.response?.tesisUsed || []);
+  
+  // Obtener la pregunta del usuario que corresponde a los criterios actuales
+  // Buscar el mensaje de usuario que está justo antes del mensaje de asistente que tiene los criterios
+  const getQuestionForCurrentSources = (): string => {
+    if (savedSources.length > 0) {
+      // Si tenemos criterios guardados, buscar el mensaje de usuario que está antes del último mensaje con respuesta
+      const lastMsgWithResponse = messages
+        .map((msg, idx) => ({ msg, idx }))
+        .filter(({ msg }) => msg.role === 'assistant' && msg.response?.tesisUsed)
+        .pop();
+      
+      if (lastMsgWithResponse) {
+        // Buscar el mensaje de usuario más reciente antes de este mensaje de asistente
+        const userMsgBefore = messages
+          .slice(0, lastMsgWithResponse.idx)
+          .filter(m => m.role === 'user')
+          .pop();
+        
+        if (userMsgBefore) {
+          return userMsgBefore.content;
+        }
+      }
+    }
+    
+    // Fallback: buscar el último mensaje de usuario antes del último mensaje con respuesta
+    const lastMsgWithResponse = messages
+      .map((msg, idx) => ({ msg, idx }))
+      .filter(({ msg }) => msg.role === 'assistant' && msg.response?.tesisUsed)
+      .pop();
+    
+    if (lastMsgWithResponse) {
+      const userMsgBefore = messages
+        .slice(0, lastMsgWithResponse.idx)
+        .filter(m => m.role === 'user')
+        .pop();
+      
+      if (userMsgBefore) {
+        return userMsgBefore.content;
+      }
+    }
+    
+    // Último fallback: primera pregunta del usuario
+    return messages.find(m => m.role === 'user')?.content || "";
+  };
+  
+  const questionForCurrentSources = getQuestionForCurrentSources();
   
   // Función para manejar clicks en referencias [1], [2], etc.
   const handleReferenceClick = (index: number) => {
@@ -654,14 +730,95 @@ export default function Ask() {
     }, 3000);
   };
 
+  // Función para manejar "¿Por qué es relevante?"
+  const handleExplainRelevance = async (documentId: string, source: "tesis" | "precedente", documentIndex: number) => {
+    const questionToUse = questionForCurrentSources;
+    
+    if (!questionToUse || questionToUse.trim().length < 10) {
+      toast({
+        title: "No hay consulta disponible",
+        description: "Necesitas hacer una consulta primero para ver por qué es relevante",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const loadingMessageId = `msg-${Date.now()}-loading`;
+    
+    try {
+      // Mostrar mensaje de carga
+      const loadingMessage: ChatMessage = {
+        id: loadingMessageId,
+        role: 'assistant',
+        content: "Generando explicación de relevancia...",
+        timestamp: Date.now(),
+      };
+      setMessages(prev => [...prev, loadingMessage]);
+
+      // Llamar al endpoint con la pregunta correcta (la que generó los criterios actuales)
+      const response = await apiRequest("POST", "/api/explain-relevance", {
+        question: questionToUse,
+        documentId,
+        source,
+        documentIndex,
+      });
+
+      // Remover mensaje de carga y agregar la explicación
+      // Crear un objeto de respuesta simulado para que FormattedAnswer pueda procesar las referencias
+      const mockResponse: AskResponse = {
+        answer: response.explanation,
+        tesisUsed: currentSources,
+        hasEvidence: true,
+        confidence: "high",
+      };
+      
+      setMessages(prev => {
+        const filtered = prev.filter(m => m.id !== loadingMessageId);
+        const explanationMessage: ChatMessage = {
+          id: `msg-${Date.now()}-explanation`,
+          role: 'assistant',
+          content: response.explanation, // Sin título, solo la explicación
+          response: mockResponse, // Agregar response para que FormattedAnswer pueda procesar referencias
+          timestamp: Date.now(),
+        };
+        return [...filtered, explanationMessage];
+      });
+
+      // Scroll al final
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    } catch (error: any) {
+      // Remover mensaje de carga en caso de error
+      setMessages(prev => prev.filter(m => m.id !== loadingMessageId));
+      
+      toast({
+        title: "Error al generar explicación",
+        description: error?.message || "No se pudo generar la explicación de relevancia",
+        variant: "destructive",
+      });
+    }
+  };
+
   const mutation = useMutation({
-    mutationFn: async (data: { question: string }) => {
+    mutationFn: async (data: { question: string; conversationHistory?: Array<{ role: "user" | "assistant"; content: string }> }) => {
       const start = Date.now();
       setStartTime(start);
       setElapsedSeconds(0);
       setTotalTimeSeconds(null);
       
-      const response = await apiRequest("POST", "/api/ask", data);
+      // Preparar historial de conversación para enviar al servidor
+      const conversationHistory = messages.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }));
+      
+      const requestData = {
+        ...data,
+        conversationHistory: conversationHistory.length > 0 ? conversationHistory : undefined
+      };
+      
+      const response = await apiRequest("POST", "/api/ask", requestData);
       
       // Log para debug
       console.log("[Ask Page] Response received:", response);
@@ -686,6 +843,11 @@ export default function Ask() {
       };
       
       setMessages(prev => [...prev, assistantMessage]);
+      
+      // Actualizar los criterios guardados cuando hay una nueva respuesta con criterios
+      if (data.tesisUsed && data.tesisUsed.length > 0) {
+        setSavedSources(data.tesisUsed);
+      }
       
       // Guardar en localStorage
       if (typeof window !== "undefined") {
@@ -786,6 +948,7 @@ export default function Ask() {
     if (window.confirm("¿Estás seguro de que quieres limpiar esta conversación?")) {
       setMessages([]);
       setQuestion("");
+      setSavedSources([]); // Limpiar también los criterios guardados
       
       // Limpiar localStorage
       if (typeof window !== "undefined") {
@@ -824,6 +987,13 @@ export default function Ask() {
           const parsed = JSON.parse(saved);
           if (parsed.messages && Array.isArray(parsed.messages)) {
             setMessages(parsed.messages);
+            // Restaurar criterios guardados del último mensaje con respuesta
+            const lastMsgWithResponse = parsed.messages
+              .filter((m: ChatMessage) => m.role === 'assistant' && m.response?.tesisUsed)
+              .pop();
+            if (lastMsgWithResponse?.response?.tesisUsed) {
+              setSavedSources(lastMsgWithResponse.response.tesisUsed);
+            }
           }
         } catch {
           // Ignorar errores
@@ -1135,6 +1305,7 @@ export default function Ask() {
                         index={index} 
                         t={t}
                         isHighlighted={highlightedSourceIndex === index + 1}
+                        onExplainRelevance={handleExplainRelevance}
                       />
                     ))}
                   </div>
@@ -1196,6 +1367,7 @@ export default function Ask() {
                           index={index} 
                           t={t}
                           isHighlighted={highlightedSourceIndex === index + 1}
+                          onExplainRelevance={handleExplainRelevance}
                         />
                       ))}
                     </div>
