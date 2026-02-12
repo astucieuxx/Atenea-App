@@ -352,20 +352,19 @@ export async function registerRoutes(
       );
       
       // Recuperar más resultados con paginación
-      // Recuperar suficientes resultados para poder paginar (más que offset + limit)
+      // Para paginación, no usar qualityThreshold estricto, solo minSimilarity
+      // Necesitamos recuperar suficientes resultados para poder paginar correctamente
+      const neededResults = offsetNum + limitNum + 10; // Recuperar más de lo necesario para asegurar paginación
       const result = await Promise.race([
         retrieveRelevantDocuments(question.trim(), {
-          maxResults: Math.max(100, (offsetNum + limitNum) * 3), // Recuperar suficientes para cubrir offset + limit
-          finalLimit: offsetNum + limitNum + 10, // Un poco más para asegurar que hay resultados después del offset
+          maxResults: Math.max(100, neededResults * 2), // Recuperar suficientes candidatos
+          finalLimit: neededResults, // Limitar después de deduplicación pero antes de paginación
           minSimilarity: 0.2,
           vectorWeight: 0.7,
           textWeight: 0.3,
           deduplicateByTesis: true,
           includePrecedentes: true,
-          useFlexibleLimits: true,
-          maxTesis: offsetNum + limitNum + 10,
-          maxJurisprudence: offsetNum + limitNum + 10,
-          maxTotalResults: offsetNum + limitNum + 10,
+          useFlexibleLimits: false, // Desactivar sistema flexible para paginación (no filtrar por qualityThreshold)
           offset: offsetNum,
           limit: limitNum,
         }),
@@ -512,9 +511,38 @@ export async function registerRoutes(
       }
       console.error("=".repeat(60));
       
+      // Detectar tipo de error para mensaje más amigable
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      let userFriendlyMessage = "Error al procesar la pregunta";
+      let userFriendlyDescription = errorMessage; // Por defecto, usar el mensaje del error
+      
+      // Si el error ya viene con mensaje amigable de embeddings.ts, usarlo directamente
+      if (errorMessage.includes("El servicio de OpenAI está experimentando problemas temporales")) {
+        userFriendlyMessage = "Error al procesar la consulta";
+        userFriendlyDescription = errorMessage; // Ya es amigable
+      } else if (errorMessage.includes("Se ha excedido el límite de solicitudes")) {
+        userFriendlyMessage = "Error al procesar la consulta";
+        userFriendlyDescription = errorMessage; // Ya es amigable
+      } else if (errorMessage.includes("Error de autenticación con OpenAI")) {
+        userFriendlyMessage = "Error de autenticación";
+        userFriendlyDescription = "Error de configuración del servidor. Por favor, contacta al administrador.";
+      } else if (errorMessage.includes("Error al generar embeddings")) {
+        userFriendlyMessage = "Error al procesar la consulta";
+        userFriendlyDescription = errorMessage; // Ya es amigable
+      } else if (errorMessage.includes("timeout") || errorMessage.includes("tardó demasiado")) {
+        userFriendlyMessage = "La consulta tardó demasiado";
+        userFriendlyDescription = "La consulta está tomando más tiempo del esperado. Por favor, intenta de nuevo con una consulta más específica.";
+      } else if (errorMessage.includes("authentication") || errorMessage.includes("API key")) {
+        userFriendlyMessage = "Error de autenticación";
+        userFriendlyDescription = "Error de configuración del servidor. Por favor, contacta al administrador.";
+      } else {
+        // Para errores desconocidos, usar mensaje genérico amigable
+        userFriendlyDescription = "Por favor, intenta de nuevo en unos momentos.";
+      }
+      
       return res.status(500).json({ 
-        error: "Error al procesar la pregunta",
-        message: error instanceof Error ? error.message : String(error)
+        error: userFriendlyMessage,
+        message: userFriendlyDescription
       });
     }
   });

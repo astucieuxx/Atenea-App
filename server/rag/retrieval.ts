@@ -263,8 +263,10 @@ export async function retrieveRelevantDocuments(
         vectorScore: r.vectorScore,
         textScore: r.textScore,
       });
-      console.log(`[retrieval] Tesis ${tesis.id} agregada con score: ${(r.combinedScore * 100).toFixed(2)}%`);
     }
+  }
+  if (retrievedTesis.length > 0) {
+    console.log(`[retrieval] ✅ ${retrievedTesis.length} tesis recuperadas (scores: ${(retrievedTesis[0].relevanceScore * 100).toFixed(2)}% - ${(retrievedTesis[retrievedTesis.length - 1].relevanceScore * 100).toFixed(2)}%)`);
   }
 
   const retrievedPrecedentes: RetrievedPrecedente[] = [];
@@ -281,8 +283,10 @@ export async function retrieveRelevantDocuments(
         vectorScore: r.vectorScore,
         textScore: r.textScore,
       });
-      console.log(`[retrieval] Precedente ${precedente.id} agregado con score: ${(r.combinedScore * 100).toFixed(2)}%`);
     }
+  }
+  if (retrievedPrecedentes.length > 0) {
+    console.log(`[retrieval] ✅ ${retrievedPrecedentes.length} precedentes recuperados (scores: ${(retrievedPrecedentes[0].relevanceScore * 100).toFixed(2)}% - ${(retrievedPrecedentes[retrievedPrecedentes.length - 1].relevanceScore * 100).toFixed(2)}%)`);
   }
   
   console.log(`[retrieval] Total antes del sistema flexible: ${retrievedTesis.length} tesis, ${retrievedPrecedentes.length} precedentes`);
@@ -297,6 +301,7 @@ export async function retrieveRelevantDocuments(
   }
 
   // --- Sistema flexible basado en calidad y jerarquía ---
+  console.log(`[retrieval] useFlexibleLimits=${config.useFlexibleLimits}, typeof=${typeof config.useFlexibleLimits}`);
   if (config.useFlexibleLimits) {
     // Usar el qualityThreshold pasado explícitamente, o el default de 0.60
     // IMPORTANTE: No usar || porque 0 es un valor válido, usar ?? (nullish coalescing)
@@ -321,6 +326,9 @@ export async function retrieveRelevantDocuments(
 
     console.log(`[retrieval] Filtrando resultados: ${retrievedTesis.length} tesis, ${retrievedPrecedentes.length} precedentes con qualityThreshold >= ${qualityThreshold}`);
 
+    let filteredTesisCount = 0;
+    let filteredPrecCount = 0;
+    
     // Agregar tesis con jerarquía
     for (const rt of retrievedTesis) {
       if (rt.relevanceScore >= qualityThreshold) {
@@ -331,7 +339,7 @@ export async function retrieveRelevantDocuments(
           hierarchy: getTesisHierarchy(rt.tesis),
         });
       } else {
-        console.log(`[retrieval] Tesis ${rt.tesis.id} filtrada: score ${(rt.relevanceScore * 100).toFixed(2)}% < ${(qualityThreshold * 100).toFixed(2)}%`);
+        filteredTesisCount++;
       }
     }
 
@@ -345,8 +353,12 @@ export async function retrieveRelevantDocuments(
           hierarchy: getPrecedenteHierarchy(rp.precedente),
         });
       } else {
-        console.log(`[retrieval] Precedente ${rp.precedente.id} filtrado: score ${(rp.relevanceScore * 100).toFixed(2)}% < ${(qualityThreshold * 100).toFixed(2)}%`);
+        filteredPrecCount++;
       }
+    }
+    
+    if (filteredTesisCount > 0 || filteredPrecCount > 0) {
+      console.log(`[retrieval] Filtrados: ${filteredTesisCount} tesis, ${filteredPrecCount} precedentes (score < ${(qualityThreshold * 100).toFixed(2)}%)`);
     }
     
     console.log(`[retrieval] Después de filtrar por qualityThreshold: ${combinedResults.length} resultados (${combinedResults.filter(r => r.type === 'tesis').length} tesis, ${combinedResults.filter(r => r.type === 'precedente').length} precedentes)`);

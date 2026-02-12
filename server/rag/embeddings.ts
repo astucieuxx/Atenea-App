@@ -73,8 +73,9 @@ class OpenAIEmbeddingProvider implements EmbeddingProvider {
   }
 
   async embedBatch(texts: string[]): Promise<number[][]> {
-    const maxRetries = 3;
+    const maxRetries = 5; // Aumentado de 3 a 5 para errores transitorios
     let lastError: Error | null = null;
+    let lastErrorData: any = null;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -92,22 +93,87 @@ class OpenAIEmbeddingProvider implements EmbeddingProvider {
         });
 
         if (!response.ok) {
-          const error = await response.json().catch(() => ({ error: "Unknown error" }));
-          throw new Error(`OpenAI API error: ${JSON.stringify(error)}`);
+          const errorData = await response.json().catch(() => ({ error: { message: "Unknown error" } }));
+          lastErrorData = errorData;
+          
+          // Detectar tipo de error para decidir si reintentar
+          const errorType = errorData?.error?.type || errorData?.error?.code || "";
+          const errorMessage = errorData?.error?.message || JSON.stringify(errorData);
+          
+          // Errores transitorios que deben reintentarse
+          const isTransientError = 
+            errorType === "server_error" ||
+            errorType === "rate_limit_error" ||
+            errorType === "timeout" ||
+            response.status === 429 || // Too Many Requests
+            response.status === 500 || // Internal Server Error
+            response.status === 502 || // Bad Gateway
+            response.status === 503 || // Service Unavailable
+            response.status === 504;   // Gateway Timeout
+          
+          if (isTransientError && attempt < maxRetries) {
+            const backoffDelay = Math.min(Math.pow(2, attempt) * 1000, 10000); // Max 10 segundos
+            console.warn(`[OpenAI Embeddings] Error transitorio (intento ${attempt}/${maxRetries}): ${errorMessage}. Reintentando en ${backoffDelay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, backoffDelay));
+            continue;
+          }
+          
+          throw new Error(`OpenAI API error: ${errorMessage}`);
         }
 
         const data = await response.json();
         return data.data.map((item: any) => item.embedding);
       } catch (error) {
         lastError = error as Error;
-        if (attempt < maxRetries) {
-          // Exponential backoff
-          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+        
+        // Si es un error de red o timeout, reintentar
+        const isNetworkError = 
+          error instanceof TypeError ||
+          (error as any)?.message?.includes("fetch failed") ||
+          (error as any)?.message?.includes("ECONNREFUSED") ||
+          (error as any)?.message?.includes("ENOTFOUND");
+        
+        if (isNetworkError && attempt < maxRetries) {
+          const backoffDelay = Math.min(Math.pow(2, attempt) * 1000, 10000);
+          console.warn(`[OpenAI Embeddings] Error de red (intento ${attempt}/${maxRetries}): ${lastError.message}. Reintentando en ${backoffDelay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, backoffDelay));
+          continue;
+        }
+        
+        // Si no es un error transitorio o ya agotamos los reintentos, lanzar error
+        if (attempt >= maxRetries) {
+          break;
         }
       }
     }
 
-    throw new Error(`Failed to generate embeddings after ${maxRetries} attempts: ${lastError?.message}`);
+    // Mensaje de error más amigable
+    const errorMessage = lastErrorData?.error?.message || lastError?.message || "Error desconocido";
+    const errorType = lastErrorData?.error?.type || "unknown";
+    const requestId = lastErrorData?.error?.request_id || "";
+    
+    // Log del error técnico completo para debugging (solo en servidor)
+    if (requestId) {
+      console.error(`[OpenAI Embeddings] Request ID: ${requestId}`);
+    }
+    console.error(`[OpenAI Embeddings] Error type: ${errorType}, Message: ${errorMessage}`);
+    
+    // Crear mensaje amigable según el tipo de error
+    let userFriendlyMessage: string;
+    if (errorType === "server_error") {
+      userFriendlyMessage = "El servicio de OpenAI está experimentando problemas temporales. Por favor, intenta de nuevo en unos momentos.";
+    } else if (errorType === "rate_limit_error") {
+      userFriendlyMessage = "Se ha excedido el límite de solicitudes. Por favor, espera unos momentos e intenta de nuevo.";
+    } else if (errorType === "invalid_api_key" || errorType === "authentication_error") {
+      userFriendlyMessage = "Error de autenticación con OpenAI. Verifica tu API key.";
+    } else {
+      // Para otros errores, usar mensaje genérico pero amigable
+      userFriendlyMessage = "Error al generar embeddings. Por favor, intenta de nuevo en unos momentos.";
+    }
+    
+    // Lanzar error con SOLO el mensaje amigable (sin el mensaje técnico)
+    // El mensaje técnico ya está en los logs del servidor
+    throw new Error(userFriendlyMessage);
   }
 
   getDimension(): number {
