@@ -12,15 +12,24 @@ export async function apiRequest<T = unknown>(
   url: string,
   data?: unknown | undefined,
 ): Promise<T> {
-  const res = await fetch(url, {
-    method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
-  });
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: data ? { "Content-Type": "application/json" } : {},
+      body: data ? JSON.stringify(data) : undefined,
+      credentials: "include",
+    });
 
-  await throwIfResNotOk(res);
-  return await res.json();
+    await throwIfResNotOk(res);
+    return await res.json();
+  } catch (error) {
+    // Si es un error de red (Failed to fetch), proporcionar un mensaje más claro
+    if (error instanceof TypeError && error.message === "Failed to fetch") {
+      throw new Error("No se pudo conectar con el servidor. Asegúrate de que el servidor esté corriendo.");
+    }
+    // Re-lanzar otros errores
+    throw error;
+  }
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";

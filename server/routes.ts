@@ -267,6 +267,11 @@ export async function registerRoutes(
   // RAG ENDPOINT: /api/explain-relevance
   // ============================================================================
   app.post("/api/explain-relevance", async (req, res) => {
+    console.log("[API /explain-relevance] Request received:", { 
+      question: req.body?.question?.substring(0, 50), 
+      documentId: req.body?.documentId,
+      source: req.body?.source 
+    });
     try {
       const { question, documentId, source, documentIndex } = req.body;
       
@@ -292,8 +297,9 @@ export async function registerRoutes(
 
       const { explainRelevance } = await import("./rag/explain-relevance");
       
+      // Aumentar timeout a 90 segundos para producción (generar embedding + LLM puede tardar)
       const timeoutPromise = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error("La consulta tardó demasiado. Por favor intenta de nuevo.")), 30000)
+        setTimeout(() => reject(new Error("La consulta tardó demasiado. Por favor intenta de nuevo.")), 90000)
       );
       
       const explanation = await Promise.race([
@@ -314,6 +320,11 @@ export async function registerRoutes(
   // RAG ENDPOINT: /api/ask/more - Obtener más criterios relevantes
   // ============================================================================
   app.post("/api/ask/more", async (req, res) => {
+    console.log("[API /ask/more] Request received:", { 
+      question: req.body?.question?.substring(0, 50), 
+      offset: req.body?.offset,
+      limit: req.body?.limit 
+    });
     try {
       const { question, offset = 0, limit = 10 } = req.body;
       
@@ -335,23 +346,31 @@ export async function registerRoutes(
       const { retrieveRelevantDocuments } = await import("./rag/retrieval");
       const { formatTesisCitation, formatPrecedenteCitation, formatTesisFormalCitation, formatPrecedenteFormalCitation } = await import("./rag/retrieval");
       
+      // Timeout para la búsqueda de más resultados (60 segundos)
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error("La búsqueda tardó demasiado. Por favor intenta de nuevo.")), 60000)
+      );
+      
       // Recuperar más resultados con paginación
       // Recuperar suficientes resultados para poder paginar (más que offset + limit)
-      const result = await retrieveRelevantDocuments(question.trim(), {
-        maxResults: Math.max(100, (offsetNum + limitNum) * 3), // Recuperar suficientes para cubrir offset + limit
-        finalLimit: offsetNum + limitNum + 10, // Un poco más para asegurar que hay resultados después del offset
-        minSimilarity: 0.2,
-        vectorWeight: 0.7,
-        textWeight: 0.3,
-        deduplicateByTesis: true,
-        includePrecedentes: true,
-        useFlexibleLimits: true,
-        maxTesis: offsetNum + limitNum + 10,
-        maxJurisprudence: offsetNum + limitNum + 10,
-        maxTotalResults: offsetNum + limitNum + 10,
-        offset: offsetNum,
-        limit: limitNum,
-      });
+      const result = await Promise.race([
+        retrieveRelevantDocuments(question.trim(), {
+          maxResults: Math.max(100, (offsetNum + limitNum) * 3), // Recuperar suficientes para cubrir offset + limit
+          finalLimit: offsetNum + limitNum + 10, // Un poco más para asegurar que hay resultados después del offset
+          minSimilarity: 0.2,
+          vectorWeight: 0.7,
+          textWeight: 0.3,
+          deduplicateByTesis: true,
+          includePrecedentes: true,
+          useFlexibleLimits: true,
+          maxTesis: offsetNum + limitNum + 10,
+          maxJurisprudence: offsetNum + limitNum + 10,
+          maxTotalResults: offsetNum + limitNum + 10,
+          offset: offsetNum,
+          limit: limitNum,
+        }),
+        timeoutPromise
+      ]);
 
       // Formatear resultados para el frontend y ordenar por relevancia
       const tesisUsed = [

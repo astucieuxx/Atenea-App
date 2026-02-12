@@ -254,6 +254,8 @@ export async function explainRelevance(
     
     if (source === "tesis") {
       // Búsqueda vectorial directa en chunks de esta tesis
+      // Optimización: usar índice y limitar resultados temprano
+      await client.query("SET LOCAL statement_timeout = '30000'");
       const result = await client.query(
         `SELECT 
           c.id AS chunk_id,
@@ -264,7 +266,7 @@ export async function explainRelevance(
         FROM tesis_chunks c
         WHERE c.tesis_id = $2
         ORDER BY c.embedding <=> $1::vector
-        LIMIT 5`,
+        LIMIT 3`,
         [embeddingJson, documentId]
       );
 
@@ -277,6 +279,8 @@ export async function explainRelevance(
       }
     } else {
       // Búsqueda vectorial directa en chunks de este precedente
+      // Optimización: usar índice y limitar resultados temprano
+      await client.query("SET LOCAL statement_timeout = '30000'");
       const result = await client.query(
         `SELECT 
           c.id AS chunk_id,
@@ -287,7 +291,7 @@ export async function explainRelevance(
         FROM precedentes_chunks c
         WHERE c.precedente_id = $2
         ORDER BY c.embedding <=> $1::vector
-        LIMIT 5`,
+        LIMIT 3`,
         [embeddingJson, documentId]
       );
 
